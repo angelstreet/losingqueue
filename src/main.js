@@ -2849,7 +2849,7 @@ function detailsHTML(g, key = 'x', rid) {
     const won = (g.result === 'Victory') === (g.userTeam === t);
     return '<h4><span class="tm-' + t + '">' + t.toUpperCase() + '</span>' + (g.userTeam === t ? ' <span class="gold">YOU</span>' : '') + ' · ' + (won ? 'win' : 'loss') +
       (g.teamGA && g.teamGA[t] ? ' · team GA ' + g.teamGA[t] : '') + '</h4>' +
-      '<table class="details-table">' + detailsColgroup + '<tr><th>Player</th><th>Rank</th><th>Pos</th><th>Champ</th><th>KDA</th><th>Dmg</th><th>CS</th><th>GA</th><th title="In-game performance score — how well they actually played, independent of the pre-game fairness verdict">Perf</th><th title="Wins-losses in their last 5 ranked games before this one">Form (last 5 before game)</th></tr>' +
+      '<table class="details-table">' + detailsColgroup + '<tr><th>Player</th><th>Rank</th><th>Pos</th><th>Champ</th><th>KDA</th><th>Dmg</th><th>CS</th><th>GA</th><th title="In-game performance score — how well they actually played, independent of the pre-game fairness verdict">Perf</th><th title="Wins-losses in their last 5 ranked games before this one">Last 5 games</th></tr>' +
       rows.map(p => {
         const isMe = p.n.replace('#', '-').toLowerCase() === meName;
         const gaCls = p.ga == null ? '' : p.ga >= 70 ? 'ga-hi' : p.ga <= 45 ? 'ga-lo' : '';
