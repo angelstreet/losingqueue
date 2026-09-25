@@ -245,17 +245,19 @@ function nameLink(riotId, region) {
 // renderRows below is invoked synchronously at module load time (via the restoreLastSearch IIFE)
 // and needs winProbCompact already initialized — a `const` declared after that call site would
 // still be in its temporal dead zone when renderRows actually runs.
-const WP_NARROW_PCT = 12;
+// v-wp-symmetry: both percentages used to get different treatment depending on which side was
+// narrower — the wide segment's label sat INSIDE it (centered, white text), the narrow one got
+// pushed OUTSIDE the bar entirely (team-colored text with no background) — same bar, two
+// different-looking numbers, worse the more lopsided the game (e.g. 7%/93%). Now both labels
+// always render the same way, outside the bar at their own end, so the pair reads as one
+// symmetric unit regardless of how lopsided the split is.
 function winProbHTML(wp) {
   if (!wp) return '';
-  const seg = (pct, side) => {
-    const inside = pct >= WP_NARROW_PCT ? `<span class="wp-seg-label">${pct}%</span>` : '';
-    return `<div class="wp-seg wp-seg-${side}" style="width:${pct}%">${inside}</div>`;
-  };
-  const outside = (pct, side) => pct < WP_NARROW_PCT ? `<span class="wp-label-out wp-label-out-${side}">${pct}%</span>` : '';
+  const seg = (pct, side) => `<div class="wp-seg wp-seg-${side}" style="width:${pct}%"></div>`;
   return `<div class="wp-bar-wrap" title="Estimated pre-game win chance BLUE–RED">
+    <span class="wp-label-out wp-label-out-blue">${wp.blue}%</span>
     <div class="wp-bar">${seg(wp.blue, 'blue')}${seg(wp.red, 'red')}</div>
-    ${outside(wp.blue, 'blue')}${outside(wp.red, 'red')}
+    <span class="wp-label-out wp-label-out-red">${wp.red}%</span>
   </div>`;
 }
 // Compact "55%–45%" form for tight spaces (row one-liners) — same null-safe convention as above.
@@ -820,6 +822,7 @@ async function loadDeepLink(riotId, matchId) {
       const e = entryData.entry;
       games = [{
         matchId, cached: true, live: !!e.live, result: e.result, champ: e.user?.champ, kda: e.user?.kda,
+        userTeam: e.userTeam, score: e.score || null,
         when: e.when, duration: e.duration, matchmaking: e.matchmaking, direction: e.direction,
         verdictTooltip: e.verdictTooltip, oneLiner: e.oneLiner,
       }, ...games];
@@ -1128,6 +1131,16 @@ function renderRows(games, container, prefix, rid) {
       ? '<span class="dim">—</span>'
       : (g.result === 'Live' ? '<span class="badge b-live">LIVE</span>' : `<span class="res-${(g.result || '?')[0]}">${esc(g.result)}</span>`);
     const dateHTML = g.live ? esc(relativeDate(g.when)) : `${esc(shortDuration(g.duration))} · ${esc(relativeDate(g.when))}`;
+    // v-game-score: the row's KDA column used to show the searched player's OWN kills/deaths/
+    // assists (e.g. "11/8/5") — useless for telling rows apart at a glance since it's basically
+    // never repeated between games by coincidence, but also never matches the final score you'd
+    // recognize the game by (op.gg/client show "23-18", not one player's personal line). Team
+    // kills (g.score, added in analyzeMatch/matches.mjs/history.mjs) give the actual scoreboard
+    // instead, ordered your-team-first via g.userTeam so a blowout reads at a glance. Falls back
+    // to the personal KDA for older cached rows analyzed before this field existed, and for live
+    // rows (mid-game, no final score yet).
+    const scoreText = g.score ? `${g.score[g.userTeam] ?? 0}-${g.score[g.userTeam === 'blue' ? 'red' : 'blue'] ?? 0}` : g.kda;
+    const scoreTitle = g.score ? `Final score — your team ${g.score[g.userTeam] ?? 0}, enemy ${g.score[g.userTeam === 'blue' ? 'red' : 'blue'] ?? 0} (KDA ${g.kda})` : `KDA ${g.kda}`;
     // Result/champ/KDA/badge/date are fixed-width columns (see .col-* in style.css) so every
     // row lines up vertically and none of them ever wraps internally — only the one-liner
     // flexes/truncates. .col-badge is deliberately wider than the badge itself (150px) to leave
@@ -1168,7 +1181,7 @@ function renderRows(games, container, prefix, rid) {
       <div class="row">
         <span class="col-res">${resultEl}</span>
         <span class="col-champ" title="${esc(g.champ)}">${esc(g.champ)}</span>
-        <span class="col-kda">${esc(g.kda)}</span>
+        <span class="col-kda" title="${esc(scoreTitle)}">${esc(scoreText)}</span>
         <span class="col-badge">${badge}</span>
         <span class="col-date dim" title="${esc(absoluteDate(g.when))}">${dateHTML}</span>
         <span class="one-h" id="o${key}" title="${oneLiner}">${oneLinerHTML}</span>
@@ -1725,10 +1738,12 @@ async function renderResultCardFallback(e, riotId, withIcon) {
     ctx.fillStyle = '#4a90d9'; ctx.fillRect(PAD, barY, blueW, barH);
     ctx.fillStyle = '#d97a4a'; ctx.fillRect(PAD + blueW, barY, barW - blueW, barH);
     ctx.restore();
+    // v-wp-symmetry: both labels always drawn, same style, regardless of how narrow either
+    // segment is — matches winProbHTML's DOM bar (no more inside-vs-outside split by width).
     ctx.font = '700 16px Arial, sans-serif';
     ctx.fillStyle = '#fff';
-    if (wp.blue >= WP_NARROW_PCT) { ctx.textAlign = 'left'; ctx.fillText(`${wp.blue}%`, PAD + 12, barY + 23); }
-    if (wp.red >= WP_NARROW_PCT) { ctx.textAlign = 'right'; ctx.fillText(`${wp.red}%`, PAD + barW - 12, barY + 23); }
+    ctx.textAlign = 'left'; ctx.fillText(`${wp.blue}%`, PAD + 12, barY + 23);
+    ctx.textAlign = 'right'; ctx.fillText(`${wp.red}%`, PAD + barW - 12, barY + 23);
     ctx.textAlign = 'left';
   }
 
@@ -1980,7 +1995,8 @@ const perfHTML = (p, uid) => safeRender(() => {
     return { chip: `<span class="perf-tag" title="Performance score — based on KDA, kill participation, damage share, objective damage share, damage taken share, CS/min, and vision score per minute. Independent of the pre-game fairness verdict.">${score}/10</span>`, panel: '' };
   }
   const targetId = `pf-${uid}`;
-  const panelBody = `Performance ${score}/10 — KDA ${d.kda} · kill participation ${d.kp}% · damage share ${d.dmgShare}% · objective share ${d.objShare}% · damage taken share ${d.dmgTakenShare}% · ${d.cspm} cs/min · ${d.vspm} vision/min`;
+  const levelPart = d.level ? ` · level ${d.level}` : '';
+  const panelBody = `Performance ${score}/10 — KDA ${d.kda} · kill participation ${d.kp}% · damage share ${d.dmgShare}% · objective share ${d.objShare}% · damage taken share ${d.dmgTakenShare}% · ${d.cspm} cs/min · ${d.vspm} vision/min${levelPart}`;
   return {
     chip: `<span class="perf-tag perf-h" data-target="${targetId}" title="Performance score — click for the real numbers behind it">${score}/10</span>`,
     panel: `<div class="perf-b" id="${targetId}" style="display:none">${esc(panelBody)}</div>`,
@@ -2688,14 +2704,17 @@ function matchupHTML(g, rid, key = 'x') {
     // .p-main can be a flex row without collapsing the plain-space joins between its tokens —
     // flexbox only treats non-whitespace text runs as their own anonymous item, so a bare " "
     // joiner between two sibling spans would otherwise vanish once the parent becomes
-    // display:flex. Whichever single element is meant to sit at the cell's far edge (rank tag on
-    // blue, player name on red) is wrapped in .p-cell-edge, the flex row's other child, pushed
-    // there via margin-left:auto — the perf score joins it there so it's right-aligned too.
+    // display:flex. v-literal-mirror: RED is now the exact reverse of BLUE's token order —
+    // blue reads place,name,kda,GA,rank,perf outer-to-center; red reads perf,rank,GA,kda,name,
+    // place center-to-outer — so reading either row from its own outer edge inward gives the
+    // identical sequence (place,name,kda,GA,rank,perf). Only the single token nearest each row's
+    // OWN outer edge (rank+perf on blue, place alone on red) needs the .p-cell-edge margin-left:
+    // auto push; everything else is first in flex order and already hugs the other end for free.
     let main;
     if (side === 'red') {
-      const cluster = [rank, place, ga, kda].filter(Boolean).join(' ');
-      const edge = [perf.chip, name].filter(Boolean).join(' ');
-      main = `<span class="p-main-info">${cluster}</span><span class="p-cell-edge">${edge}</span>`;
+      const cluster = [perf.chip, rank, ga, kda, name].filter(Boolean).join(' ');
+      const edge = [place].filter(Boolean).join(' ');
+      main = `<span class="p-main-info">${cluster}</span>` + (edge ? `<span class="p-cell-edge">${edge}</span>` : '');
     } else {
       const info = [place, name, kda, ga].filter(Boolean).join(' ');
       const edge = [rank, perf.chip].filter(Boolean).join(' ');
@@ -2767,13 +2786,21 @@ function matchupHTML(g, rid, key = 'x') {
     // shown here is lost, just relocated. A 404 (unmapped id, ddragon hiccup) falls back to the
     // exact same plain-text `.champ` span this used to always render, via the delegated error
     // listener above — never a broken-image icon.
+    const CHAMP_MASTERY_MIN = 10000;
     const champCell = (p, side) => {
       if (!p) return '<span class="dim">—</span>';
       const meta = champMetaTitle(p.champ);
       const title = meta || p.champ;
       const cls = 'champ-icon team-' + side + (meta ? ' champ-meta' : '');
       const iconUrl = `https://ddragon.leagueoflegends.com/cdn/${CHAMP_STATS_PATCH}/img/champion/${encodeURIComponent(p.champ)}.png`;
-      return `<img class="${cls}" src="${iconUrl}" alt="${esc(p.champ)}" title="${esc(title)}">`;
+      // v-champ-mastery: mastery points moved out of the chip row (where it only ever showed up
+      // as the narrow "Nk mastery" flag chip, gated to the skilled-but-not-OTP case) and onto the
+      // portrait itself — gated at CHAMP_MASTERY_MIN so a player who just picked the champ up
+      // this game (a few hundred/thousand points from champion-select-day-one mastery) doesn't
+      // get a label implying real history on it; below that it's noise, not signal.
+      const masteryLabel = p.masteryPts >= CHAMP_MASTERY_MIN ? `${Math.round(p.masteryPts / 1000)}k` : '';
+      const mastery = masteryLabel ? `<div class="champ-mastery" title="Mastery points on ${esc(p.champ)}">${masteryLabel}</div>` : '';
+      return `<img class="${cls}" src="${iconUrl}" alt="${esc(p.champ)}" title="${esc(title)}">${mastery}`;
     };
     // v-team-synergy: was BOTTOM/UTILITY-only (the bot-lane chip); now fires for ANY lane whose
     // player is part of a qualifying pair — bestSynergyFor picks the single most significant one
@@ -2853,11 +2880,11 @@ function detailsHTML(g, key = 'x', rid) {
       rows.map(p => {
         const isMe = p.n.replace('#', '-').toLowerCase() === meName;
         const gaCls = p.ga == null ? '' : p.ga >= 70 ? 'ga-hi' : p.ga <= 45 ? 'ga-lo' : '';
-        const badge = badgeHTML(p);
         const chips = chipsHTML(p);
-        // MVP/ACE and the flag/duo/streak/cspm chips all live in the Player cell's chip group —
-        // keeping the other columns plain text is what makes the fixed-width alignment hold up.
-        const nameCell = `<span class="pcell"><span class="pname">${nameLink(p.n)}</span>${badge}${chips}</span>`;
+        // v-no-dupe-badge: MVP/ACE already shows on this same player's row in the MATCHUP section
+        // right above (badgeHTML, via cellName) — this collapsed DETAILS table doesn't repeat it,
+        // just the flag/duo/streak/cspm chips.
+        const nameCell = `<span class="pcell"><span class="pname">${nameLink(p.n)}</span>${chips}</span>`;
         // v4.18: full unabbreviated form ("Emerald I · 50 LP · 51%") — rankDetailLabel above,
         // shared with (built on the same parseRank as) the matchup rows' compact tag. Season
         // winrate shows whenever it exists (wr is null only when seasonGames is 0) — no longer

@@ -42,10 +42,14 @@ export default async function handler(req, res) {
       const m = await fetchMatch(c, store, id); // 1 Riot call if raw not cached
       const me = m && pStats(m, acct.puuid);
       if (me?.remake) continue; // skip — doesn't count toward the requested total
+      const teamKills = { 100: 0, 200: 0 };
+      if (m) for (const pt of m.info.participants) teamKills[pt.teamId] += pt.kills;
       out.push({
         matchId: id, cached: false, wasLive: !!cachedAnalysis,
         result: me ? (me.win ? 'Victory' : 'Defeat') : '?',
         champ: me?.champ, kda: me ? `${me.k}/${me.d}/${me.a}` : '',
+        userTeam: me ? (me.team === 100 ? 'blue' : 'red') : null,
+        score: m ? { blue: teamKills[100], red: teamKills[200] } : null,
         when: m ? new Date(m.info.gameStartTimestamp).toISOString() : null,
         duration: m ? `${Math.floor(m.info.gameDuration / 60)}m ${String(m.info.gameDuration % 60).padStart(2, '0')}s` : '',
       });
@@ -56,4 +60,4 @@ export default async function handler(req, res) {
   }
 }
 
-const pick = a => ({ result: a.result, champ: a.user?.champ, kda: a.user?.kda, when: a.when, duration: a.duration, matchmaking: a.matchmaking, direction: a.direction, verdictTooltip: a.verdictTooltip, oneLiner: a.oneLiner });
+const pick = a => ({ result: a.result, champ: a.user?.champ, kda: a.user?.kda, userTeam: a.userTeam, score: a.score || null, when: a.when, duration: a.duration, matchmaking: a.matchmaking, direction: a.direction, verdictTooltip: a.verdictTooltip, oneLiner: a.oneLiner });

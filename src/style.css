@@ -229,21 +229,18 @@ td.you + td.you { border-left:none !important; }
    line 1 off the other side's, since middle-alignment centers each cell against the row's
    tallest content. Top-aligning keeps line 1 on a shared baseline regardless. */
 .matchup td { vertical-align:top; }
-.matchup .mid-v { text-align:center; white-space:nowrap; min-width:90px; padding-top:9px; }
+.matchup .mid-v { text-align:center; white-space:nowrap; min-width:72px; padding-top:9px; }
+.champ-mastery { font-size:9px; color:var(--dim); text-align:center; margin-top:2px; white-space:nowrap; }
 /* v4.27: win probability under the TEAM row's verdict badge — a horizontal bar (was a "BLUE 19% ·
    RED 81%" text line): one slim rounded track, a blue segment sized to wp.blue% and a red one to
-   wp.red% (always sum to 100), each label centered in its own segment in near-white text with a
-   dark text-shadow for contrast on either color. .wp-bar itself clips to the pill shape
-   (overflow:hidden) — a segment under WP_NARROW_PCT (main.js) can't fit its own label without
-   getting clipped, so main.js drops that inline label and adds a .wp-label-out span instead,
-   positioned OUTSIDE wp-bar-wrap (which does NOT clip) just past the bar's edge on that side, in
-   the team's own color against the page background. */
+   wp.red% (always sum to 100). v-wp-symmetry: both labels sit OUTSIDE wp-bar-wrap, one past each
+   edge, in that team's own color — same treatment for both regardless of the split, so a lopsided
+   game (e.g. 7%/93%) doesn't render one number inside the bar and the other floating outside it. */
 .wp-bar-wrap { position:relative; margin-top:6px; height:15px; }
 .wp-bar { display:flex; height:100%; border-radius:99px; overflow:hidden; background:var(--line); }
 .wp-seg { display:flex; align-items:center; justify-content:center; min-width:0; overflow:hidden; }
 .wp-seg-blue { background:var(--blue); }
 .wp-seg-red { background:var(--red); box-shadow:-1px 0 0 rgba(0,0,0,.3) inset; }
-.wp-seg-label { font-size:10px; font-weight:800; color:#fff; white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,.6); }
 .wp-label-out { position:absolute; top:50%; transform:translateY(-50%); font-size:10px; font-weight:800; white-space:nowrap; }
 .wp-label-out-blue { right:100%; margin-right:4px; color:var(--blue); }
 .wp-label-out-red { left:100%; margin-left:4px; color:var(--red); }
@@ -329,11 +326,11 @@ td.you + td.you { border-left:none !important; }
 .matchup .pname { display:inline-block; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:bottom; }
 .p-chips { display:flex; gap:4px; flex-wrap:wrap; margin-top:3px; }
 .matchup tr:not(.teamrow) .rgt { text-align:left; }
-/* v4.26: red's chip line (MVP/ACE badge leading, then flags/duo/streak/cs) right-aligns to sit
-   under the player NAME now that .p-cell-edge pushes the name to red's outer edge instead of
-   chips trailing under whatever used to be on the left — keeps the badge visually adjacent to the
-   name, mirroring how blue's badge already sits directly under blue's (left-aligned) name. */
-.matchup tr:not(.teamrow) .rgt .p-chips { justify-content:flex-end; }
+/* Chip line always starts at the cell's left edge on both sides — a row with few/short chips
+   (e.g. just ACE+OTP) still lines up with a longer row's chips instead of drifting toward
+   whichever edge the row's own content happens to reach, which is what right-aligning under
+   red's (variable-width) name produced. */
+.matchup tr:not(.teamrow) .rgt .p-chips { justify-content:flex-start; }
 /* BLUE/RED team tables share fixed column widths (via an identical <colgroup>) so they line
    up vertically. The Player cell is the one variable-content column — long "Name#TAG" plus a
    chip group — so it gets the max-width:0 + overflow trick to ellipsis instead of pushing the
