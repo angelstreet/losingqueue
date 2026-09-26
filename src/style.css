@@ -333,11 +333,12 @@ td.you + td.you { border-left:none !important; }
 .matchup .pname { display:inline-block; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:bottom; }
 .p-chips { display:flex; gap:4px; flex-wrap:wrap; margin-top:3px; }
 .matchup tr:not(.teamrow) .rgt { text-align:left; }
-/* Chip line always starts at the cell's left edge on both sides — a row with few/short chips
-   (e.g. just ACE+OTP) still lines up with a longer row's chips instead of drifting toward
-   whichever edge the row's own content happens to reach, which is what right-aligning under
-   red's (variable-width) name produced. */
-.matchup tr:not(.teamrow) .rgt .p-chips { justify-content:flex-start; }
+/* v-chips-follow-name: chip line sits under whichever edge line 1's player NAME is pinned to —
+   blue's name is at blue's own outer edge (flex-start, free), so its chips default flex-start too.
+   Red's name is now part of the kda+name+place group pushed to RED's outer edge (near the avatar,
+   see cellName's v-literal-mirror grouping) — so red's chips must right-align (flex-end) to stay
+   under it, matching blue's chips-under-name relationship rather than a flat "always left" rule. */
+.matchup tr:not(.teamrow) .rgt .p-chips { justify-content:flex-end; }
 /* BLUE/RED team tables share fixed column widths (via an identical <colgroup>) so they line
    up vertically. The Player cell is the one variable-content column — long "Name#TAG" plus a
    chip group — so it gets the max-width:0 + overflow trick to ellipsis instead of pushing the
