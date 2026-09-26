@@ -2844,12 +2844,16 @@ function matchupHTML(g, rid, key = 'x') {
   // formula (see scoring.html), so it needs to be visible here too, not just implied by the badge.
   // Same "omit for legacy entries" treatment as duo: g.autofillCounts may be undefined on older
   // cached analyses.
-  const teamGaText = (teamGa, bonus, autofillN) => {
+  // v-team-tags: autofill/duo/OTP, in that order — the three signals the user most wants at a
+  // glance in this line, ahead of anything else the team-level summary could show.
+  const teamGaText = (teamGa, bonus, autofillN, otpN) => {
     const tags = [];
-    if (bonus > 0) tags.push(`<span title="GA bonus for proven duo synergy">+${bonus} duo</span>`);
     if (autofillN > 0) tags.push(`<span class="af-count" title="${autofillN} autofilled player${autofillN === 1 ? '' : 's'} on this team — off-role risk, weighed into the net">${autofillN} autofill</span>`);
+    if (bonus > 0) tags.push(`<span title="GA bonus for proven duo synergy">+${bonus} duo</span>`);
+    if (otpN > 0) tags.push(`<span title="${otpN} one-trick${otpN === 1 ? '' : 's'} on this team — plays this champion a lot and masters it">${otpN} OTP</span>`);
     return `<span title="65% team average + 35% average of the top 2 GAs">team GA</span> ${teamGa ?? '–'}` + (tags.length ? ` (${tags.join(' · ')})` : '');
   };
+  const otpCountOf = t => (g.players || []).filter(p => p.team === t && p.flags?.includes('otp')).length;
   // v4.22/v-team-synergy: side-by-side synergy comparisons fold into the merged DRAFT pill's
   // inline component list below (was its own standalone bot-lane-only line — see draftPillHTML's
   // doc comment) — generalized to loop over every role-pair type, only added when BOTH teams have
@@ -2868,11 +2872,17 @@ function matchupHTML(g, rid, key = 'x') {
       });
     }
   }
+  // v-draft-pill-fullwidth: the pill used to live inside the teamrow's mid-v <td>, but that cell
+  // shares its table column with every lane row's short EVEN/BLUE +N/RED +N badge — a long draft
+  // explanation ("— Caitlyn countered by Samira −3") had nowhere to breathe there without either
+  // forcing that whole shared column wide or wrapping into a cramped 3-word-per-line box. Rendered
+  // as its own block below the table instead, where it can use the card's full width.
+  const draftPill = draftPillHTML(g.draft, draftComponents);
   return `<table class="matchup">
     <tr><th class="champ-c"></th><th><span class="tm-blue">BLUE</span>${g.userTeam === 'blue' ? ' <span class="gold">YOU</span>' : ''}</th><th class="mid-v">Favored</th><th class="rgt"><span class="tm-red">RED</span>${g.userTeam === 'red' ? ' <span class="gold">YOU</span>' : ''}</th><th class="champ-c"></th></tr>
     ${rows}
-    <tr class="teamrow"><td colspan="2"><b><span class="tm-blue">TEAM</span> · ${blueWon ? 'win' : 'loss'} · ${teamGaText(gB, g.duoBonus?.blue, g.autofillCounts?.blue)}</b></td><td class="mid-v"><span class="badge ${verdictCls(g.matchmaking, g.direction)}" title="${esc(verdictTitle(g.matchmaking, g.direction, g.verdictTooltip))}">${verdictLabel(g.matchmaking, g.direction)}</span>${winProbHTML(g.winProb)}${draftPillHTML(g.draft, draftComponents)}</td><td colspan="2" class="rgt"><b><span class="tm-red">TEAM</span> · ${blueWon ? 'loss' : 'win'} · ${teamGaText(gR, g.duoBonus?.red, g.autofillCounts?.red)}</b></td></tr>
-  </table>`;
+    <tr class="teamrow"><td colspan="2"><b><span class="tm-blue">TEAM</span> · ${blueWon ? 'win' : 'loss'} · ${teamGaText(gB, g.duoBonus?.blue, g.autofillCounts?.blue, otpCountOf('blue'))}</b></td><td class="mid-v"><span class="badge ${verdictCls(g.matchmaking, g.direction)}" title="${esc(verdictTitle(g.matchmaking, g.direction, g.verdictTooltip))}">${verdictLabel(g.matchmaking, g.direction)}</span>${winProbHTML(g.winProb)}</td><td colspan="2" class="rgt"><b><span class="tm-red">TEAM</span> · ${blueWon ? 'loss' : 'win'} · ${teamGaText(gR, g.duoBonus?.red, g.autofillCounts?.red, otpCountOf('red'))}</b></td></tr>
+  </table>` + (draftPill ? `<div class="draft-pill-row">${draftPill}</div>` : '');
 }
 
 // Column widths shared by both team tables (via an identical <colgroup> in each) so BLUE and

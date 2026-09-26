@@ -266,12 +266,14 @@ td.you + td.you { border-left:none !important; }
    one block so it reads as a single distinct signal under the fairness badge/win-prob line rather
    than two loose rows). Border color follows the verdict (GOOD/BAD/EVEN); the verdict text inside
    is colored the same way, the trailing " — components" tail stays dim regardless. */
-/* v-mid-narrow: white-space:normal + a max-width (not nowrap) — the pill's own <td> shares the
-   SAME table column as every lane row's Favored badge (EVEN/BLUE +N/RED +N), so a long "— Caitlyn
-   countered by Samira −3" tail rendered nowrap was forcing that whole column wide on every row,
-   not just the footer's. Wrapping it onto 2-3 lines here keeps the column's real floor at the
-   short badge text instead. */
-.draft-pill { display:inline-flex; align-items:center; margin-top:5px; padding:3px 6px; border:1px solid var(--line); border-radius:6px; font-size:11px; white-space:normal; max-width:130px; text-align:left; }
+/* v-draft-pill-fullwidth: the pill no longer lives inside the teamrow's mid-v <td> (see
+   matchupHTML) — that cell shares its table column with every lane row's short Favored badge
+   (EVEN/BLUE +N/RED +N), so a long "— Caitlyn countered by Samira −3" tail was either forcing that
+   shared column wide or, once capped, wrapping into a cramped few-words-per-line box. Its own
+   full-width row below the table gives it real room; white-space:normal is just a safety net for
+   an unusually long line rather than the thing doing the work now. */
+.draft-pill-row { text-align:center; margin-top:6px; }
+.draft-pill { display:inline-flex; align-items:center; padding:3px 8px; border:1px solid var(--line); border-radius:6px; font-size:11px; white-space:normal; max-width:100%; text-align:left; }
 .draft-pill.draft-good { border-color:var(--ok); }
 .draft-pill.draft-bad { border-color:var(--bad); }
 .draft-verdict { font-weight:700; }
