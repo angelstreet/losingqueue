@@ -295,6 +295,22 @@ const absoluteDate = iso => {
   const two = n => String(n).padStart(2, '0');
   return `${two(d.getDate())}/${two(d.getMonth() + 1)} ${two(d.getHours())}:${two(d.getMinutes())}`;
 };
+// v-game-score: the row's KDA column used to show the searched player's OWN kills/deaths/assists
+// (e.g. "11/8/5") — useless for telling rows apart at a glance since it's basically never
+// repeated between games by coincidence, but also never matches the final score you'd recognize
+// the game by (op.gg/client show "23-18", not one player's personal line). Team kills (g.score,
+// added in analyzeMatch/matches.mjs/history.mjs) give the actual scoreboard instead, ordered
+// your-team-first via g.userTeam so a blowout reads at a glance. Falls back to the personal KDA
+// for older cached rows analyzed before this field existed, and for live rows (mid-game, no final
+// score yet). Shared by renderRows (list-row shape: flat g.kda) and analyze() (in-place update
+// after a re-analyze, from the full analyzeMatch() entry shape: g.user.kda instead) — a
+// KDA-only legacy row can turn into a scored one without a full reload this way.
+const gameScoreOf = g => {
+  const kda = g.kda ?? g.user?.kda;
+  if (!g.score) return { text: kda, title: `KDA ${kda}` };
+  const mine = g.score[g.userTeam] ?? 0, theirs = g.score[g.userTeam === 'blue' ? 'red' : 'blue'] ?? 0;
+  return { text: `${mine}-${theirs}`, title: `Final score — your team ${mine}, enemy ${theirs} (KDA ${kda})` };
+};
 // Riot IDs are typed inconsistently ("Name #TAG" vs "Name#TAG") — normalize whitespace around
 // the '#' everywhere before it's used as a cache/history key, so both forms resolve the same entry.
 const normRiotId = s => String(s || '').trim().replace(/\s*#\s*/, '#');
@@ -1131,16 +1147,7 @@ function renderRows(games, container, prefix, rid) {
       ? '<span class="dim">—</span>'
       : (g.result === 'Live' ? '<span class="badge b-live">LIVE</span>' : `<span class="res-${(g.result || '?')[0]}">${esc(g.result)}</span>`);
     const dateHTML = g.live ? esc(relativeDate(g.when)) : `${esc(shortDuration(g.duration))} · ${esc(relativeDate(g.when))}`;
-    // v-game-score: the row's KDA column used to show the searched player's OWN kills/deaths/
-    // assists (e.g. "11/8/5") — useless for telling rows apart at a glance since it's basically
-    // never repeated between games by coincidence, but also never matches the final score you'd
-    // recognize the game by (op.gg/client show "23-18", not one player's personal line). Team
-    // kills (g.score, added in analyzeMatch/matches.mjs/history.mjs) give the actual scoreboard
-    // instead, ordered your-team-first via g.userTeam so a blowout reads at a glance. Falls back
-    // to the personal KDA for older cached rows analyzed before this field existed, and for live
-    // rows (mid-game, no final score yet).
-    const scoreText = g.score ? `${g.score[g.userTeam] ?? 0}-${g.score[g.userTeam === 'blue' ? 'red' : 'blue'] ?? 0}` : g.kda;
-    const scoreTitle = g.score ? `Final score — your team ${g.score[g.userTeam] ?? 0}, enemy ${g.score[g.userTeam === 'blue' ? 'red' : 'blue'] ?? 0} (KDA ${g.kda})` : `KDA ${g.kda}`;
+    const { text: scoreText, title: scoreTitle } = gameScoreOf(g);
     // Result/champ/KDA/badge/date are fixed-width columns (see .col-* in style.css) so every
     // row lines up vertically and none of them ever wraps internally — only the one-liner
     // flexes/truncates. .col-badge is deliberately wider than the badge itself (150px) to leave
@@ -1181,7 +1188,7 @@ function renderRows(games, container, prefix, rid) {
       <div class="row">
         <span class="col-res">${resultEl}</span>
         <span class="col-champ" title="${esc(g.champ)}">${esc(g.champ)}</span>
-        <span class="col-kda" title="${esc(scoreTitle)}">${esc(scoreText)}</span>
+        <span class="col-kda" id="k${key}" title="${esc(scoreTitle)}">${esc(scoreText)}</span>
         <span class="col-badge">${badge}</span>
         <span class="col-date dim" title="${esc(absoluteDate(g.when))}">${dateHTML}</span>
         <span class="one-h" id="o${key}" title="${oneLiner}">${oneLinerHTML}</span>
@@ -1281,6 +1288,11 @@ async function analyze(matchId, btn, i, attempt = 0) {
     // should never be held hostage by a crash in the much richer (and much newer) details render.
     const badgeEl = document.getElementById('b' + i);
     if (badgeEl) { badgeEl.className = 'badge ' + verdictCls(g.matchmaking, g.direction); badgeEl.textContent = verdictLabel(g.matchmaking, g.direction); badgeEl.title = verdictTitle(g.matchmaking, g.direction, g.verdictTooltip); }
+    // v-game-score: a re-analyze of an old legacy row is exactly how a KDA-only row picks up a
+    // real score for the first time — without this, the row template's initial paint never runs
+    // again for it, so it kept showing personal KDA even after a successful force re-analysis.
+    const kdaEl = document.getElementById('k' + i);
+    if (kdaEl) { const { text, title } = gameScoreOf(g); kdaEl.textContent = text; kdaEl.title = title; }
     const oneEl = document.getElementById('o' + i);
     if (oneEl) {
       const wpCompact = winProbCompact(g.winProb);
