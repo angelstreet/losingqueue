@@ -34,16 +34,16 @@ document.querySelector('#app').innerHTML = `
   <form id="f" autocomplete="off" onsubmit="return false">
     <div class="combo">
       <input id="riotId" name="riot-search" placeholder="Game name #TAG — e.g. xDevilStreet#EUW" required autocomplete="off">
+      <span id="losingBadge" style="display:none"></span>
       <button type="button" id="bmStar" title="Bookmark this profile">☆</button>
       <button type="button" id="copyProfileLink" title="Copy a shareable link to this profile">🔗</button>
       <div id="bmDrop"></div>
     </div>
-    <span id="losingBadge" style="display:none"></span>
     <select id="games"><option>3</option><option selected>5</option><option>10</option></select>
     <select id="region"><option selected>euw</option><option>eune</option><option>na</option><option>kr</option></select>
     <button id="go">Find</button>
     <button type="button" id="liveBtn" class="live">🔴 Live</button>
-    <button type="button" id="analyzeAllBtn" style="display:none">Analyze all</button>
+    <button type="button" id="analyzeAllBtn" disabled>Analyze</button>
     <div class="keyrow">
       <div class="keywrap">
         <input id="apiKey" name="riot-api-key" placeholder="Your Riot API key (optional)" type="text" autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore>
@@ -879,12 +879,14 @@ async function liveSearch(attempt, headers) {
   $('#list').innerHTML = ''; // only clear the previous list once the new one is ready to replace it
   renderRows(data.games, $('#list'), 'm', CTX.riotId);
   listIsKeylessFallback = false;
-  // v-analyze-all: how many of the just-rendered rows still need a manual Analyze click — shown so
-  // the user can trigger them all in one go instead of clicking each row individually.
+  // v-analyze-all: how many of the just-rendered rows still need a manual Analyze click — lets
+  // the user trigger them all in one go instead of clicking each row individually. Always visible
+  // next to Find/Live (consistent with them), just disabled when there's nothing to do rather
+  // than popping in/out of the layout.
   const unanalyzed = data.games.filter(g => !g.cached).length;
   const allBtn = $('#analyzeAllBtn');
-  if (unanalyzed > 0) { allBtn.style.display = ''; allBtn.disabled = false; allBtn.textContent = `Analyze all (${unanalyzed})`; }
-  else { allBtn.style.display = 'none'; }
+  allBtn.disabled = unanalyzed === 0;
+  allBtn.textContent = unanalyzed > 0 ? `Analyze (${unanalyzed})` : 'Analyze';
   // The rows speak for themselves (✓ badges already mark analyzed games) — no instructional
   // sentence needed once there's a list to look at; only the empty-results case still needs a
   // status message, since there's nothing on screen to explain otherwise.
@@ -1000,8 +1002,8 @@ $('#analyzeAllBtn').addEventListener('click', async () => {
     succeeded++;
   }
   const remaining = targets.length - succeeded;
-  if (remaining > 0) { allBtn.disabled = false; allBtn.textContent = `Analyze all (${remaining})`; }
-  else allBtn.style.display = 'none';
+  allBtn.disabled = remaining === 0;
+  allBtn.textContent = remaining > 0 ? `Analyze (${remaining})` : 'Analyze';
 });
 
 async function checkLive(riotId, region, attempt = 0) {
@@ -1115,18 +1117,27 @@ function renderLosingBadge(games) {
   if (analyzed.length < QUEUE_STATUS_STREAK) { el.style.display = 'none'; el.innerHTML = ''; return; }
   const against = leadingStreak(games, isUnfairAgainst);
   const favor = leadingStreak(games, isFavoredFor);
+  // v-verdict-colors: reuses the EXACT same b-ok/b-mid/b-bad mapping the per-game FAIR/FAVORED/
+  // NOT FAIR verdict badges already use, instead of a bespoke good/bad/neutral scheme — the same
+  // classes meaning different things in two badges on the same page (b-ok read as FAIR in one and
+  // FAVORED in the other) was the real "not visible/consistent enough" problem, not the pill style
+  // itself. FAIR also drops "QUEUE" (just "FAIR") to match the per-game badge's own bare label.
   let cls, label, title;
   if (against >= QUEUE_STATUS_STREAK) {
     cls = 'b-bad'; label = against > QUEUE_STATUS_STREAK ? `LOSING QUEUE ×${against}` : 'LOSING QUEUE';
     title = `Last ${against} analyzed games in a row were stacked against this player (regardless of the actual results) — the matchmaker may be pushing them down`;
   } else if (favor >= QUEUE_STATUS_STREAK) {
-    cls = 'b-ok'; label = favor > QUEUE_STATUS_STREAK ? `FAVORED QUEUE ×${favor}` : 'FAVORED QUEUE';
+    cls = 'b-mid'; label = favor > QUEUE_STATUS_STREAK ? `FAVORED QUEUE ×${favor}` : 'FAVORED QUEUE';
     title = `Last ${favor} analyzed games in a row were stacked in this player's favor (regardless of the actual results)`;
   } else {
-    cls = 'b-neutral'; label = 'FAIR QUEUE';
+    cls = 'b-ok'; label = 'FAIR';
     title = `Matchmaking hasn't leaned consistently either way for the last ${QUEUE_STATUS_STREAK}+ analyzed games`;
   }
-  el.innerHTML = `<span class="badge ${cls}" title="${esc(title)}">${esc(label)}</span>`;
+  // v-badge-in-input: lives inside the riotId input now, like the star/link icons (#bmStar/
+  // #copyProfileLink) — a full-text pill ("FAVORED QUEUE ×5") doesn't fit that space the way a
+  // single glyph does, so this is a small colored dot instead; the actual label + explanation
+  // move entirely into the title tooltip (same content, just not printed inline any more).
+  el.innerHTML = `<span class="queue-dot ${cls}" title="${esc(label)} — ${esc(title)}">●</span>`;
   el.style.display = 'inline-block';
 }
 
@@ -2991,15 +3002,21 @@ function matchupHTML(g, rid, key = 'x') {
   // Same "omit for legacy entries" treatment as duo: g.autofillCounts may be undefined on older
   // cached analyses.
   // v-team-tags: autofill/duo/OTP, in that order — the three signals the user most wants at a
-  // glance in this line, ahead of anything else the team-level summary could show.
-  const teamGaText = (teamGa, bonus, autofillN, otpN) => {
+  // glance in this line, ahead of anything else the team-level summary could show. All three
+  // share one color (.team-stat) instead of autofill alone standing out amber — they're peers,
+  // not one risk flag among plain text. Duo shows the PLAYER COUNT (matching autofill/OTP's own
+  // count style), not the GA bonus points it used to show — the bonus amount still lives in the
+  // tooltip for whoever wants it, but "+6 duo" read as a different kind of number than "1
+  // autofill"/"3 OTP" sitting right next to it.
+  const teamGaText = (teamGa, bonus, autofillN, otpN, duoN) => {
     const tags = [];
-    if (autofillN > 0) tags.push(`<span class="af-count" title="${autofillN} autofilled player${autofillN === 1 ? '' : 's'} on this team — off-role risk, weighed into the net">${autofillN} autofill</span>`);
-    if (bonus > 0) tags.push(`<span title="GA bonus for proven duo synergy">+${bonus} duo</span>`);
-    if (otpN > 0) tags.push(`<span title="${otpN} one-trick${otpN === 1 ? '' : 's'} on this team — plays this champion a lot and masters it">${otpN} OTP</span>`);
+    if (autofillN > 0) tags.push(`<span class="team-stat" title="${autofillN} autofilled player${autofillN === 1 ? '' : 's'} on this team — off-role risk, weighed into the net">${autofillN} autofill</span>`);
+    if (duoN > 0) tags.push(`<span class="team-stat" title="${duoN} player${duoN === 1 ? '' : 's'} in a proven duo on this team${bonus > 0 ? ` — +${bonus} GA bonus for duo synergy` : ''}">${duoN} duo</span>`);
+    if (otpN > 0) tags.push(`<span class="team-stat" title="${otpN} one-trick${otpN === 1 ? '' : 's'} on this team — plays this champion a lot and masters it">${otpN} OTP</span>`);
     return `<span title="65% team average + 35% average of the top 2 GAs">team GA</span> ${teamGa ?? '–'}` + (tags.length ? ` (${tags.join(' · ')})` : '');
   };
   const otpCountOf = t => (g.players || []).filter(p => p.team === t && p.flags?.includes('otp')).length;
+  const duoCountOf = t => (g.players || []).filter(p => p.team === t && p.duo).length;
   // v4.22/v-team-synergy: side-by-side synergy comparisons fold into the merged DRAFT pill's
   // inline component list below (was its own standalone bot-lane-only line — see draftPillHTML's
   // doc comment) — generalized to loop over every role-pair type, only added when BOTH teams have
@@ -3024,11 +3041,22 @@ function matchupHTML(g, rid, key = 'x') {
   // forcing that whole shared column wide or wrapping into a cramped 3-word-per-line box. Rendered
   // as its own block below the table instead, where it can use the card's full width.
   const draftPill = draftPillHTML(g.draft, draftComponents);
+  // v-equal-width: table-layout:fixed + an explicit colgroup so BLUE's and RED's info columns
+  // split the remaining space exactly evenly — under the default auto layout, each column sized
+  // to its own row's widest content, so a match with longer names on one side (pure chance, not
+  // structural) made that whole column visibly wider than the other.
   return `<table class="matchup">
+    <colgroup><col style="width:60px"><col><col style="width:126px"><col><col style="width:60px"></colgroup>
     <tr><th class="champ-c"></th><th><span class="tm-blue">BLUE</span>${g.userTeam === 'blue' ? ' <span class="gold">YOU</span>' : ''}</th><th class="mid-v">Favored</th><th class="rgt"><span class="tm-red">RED</span>${g.userTeam === 'red' ? ' <span class="gold">YOU</span>' : ''}</th><th class="champ-c"></th></tr>
     ${rows}
-    <tr class="teamrow"><td colspan="2"><b><span class="tm-blue">TEAM</span> · ${blueWon ? 'win' : 'loss'} · ${teamGaText(gB, g.duoBonus?.blue, g.autofillCounts?.blue, otpCountOf('blue'))}</b></td><td class="mid-v"><span class="badge ${verdictCls(g.matchmaking, g.direction)}" title="${esc(verdictTitle(g.matchmaking, g.direction, g.verdictTooltip))}">${verdictLabel(g.matchmaking, g.direction)}</span>${winProbHTML(g.winProb)}</td><td colspan="2" class="rgt"><b><span class="tm-red">TEAM</span> · ${blueWon ? 'loss' : 'win'} · ${teamGaText(gR, g.duoBonus?.red, g.autofillCounts?.red, otpCountOf('red'))}</b></td></tr>
-  </table>` + (draftPill ? `<div class="draft-pill-row">${draftPill}</div>` : '');
+    <tr class="teamrow"><td colspan="2"><b><span class="tm-blue">TEAM</span> · ${blueWon ? 'win' : 'loss'} · ${teamGaText(gB, g.duoBonus?.blue, g.autofillCounts?.blue, otpCountOf('blue'), duoCountOf('blue'))}</b></td><td class="mid-v"></td><td colspan="2" class="rgt"><b><span class="tm-red">TEAM</span> · ${blueWon ? 'loss' : 'win'} · ${teamGaText(gR, g.duoBonus?.red, g.autofillCounts?.red, otpCountOf('red'), duoCountOf('red'))}</b></td></tr>
+  </table>` +
+    // v-verdict-center: the verdict badge + win% bar used to live in the narrow mid-v <td>, so
+    // they centered on THAT column's axis — visibly off from the DRAFT pill below them, which
+    // centers on the full card width (see v-draft-pill-fullwidth). Moved out here so both blocks
+    // share the exact same center line.
+    `<div class="team-verdict-row"><span class="badge ${verdictCls(g.matchmaking, g.direction)}" title="${esc(verdictTitle(g.matchmaking, g.direction, g.verdictTooltip))}">${verdictLabel(g.matchmaking, g.direction)}</span>${winProbHTML(g.winProb)}</div>` +
+    (draftPill ? `<div class="draft-pill-row">${draftPill}</div>` : '');
 }
 
 // Column widths shared by both team tables (via an identical <colgroup> in each) so BLUE and
@@ -3050,11 +3078,11 @@ function detailsHTML(g, key = 'x', rid) {
       rows.map(p => {
         const isMe = p.n.replace('#', '-').toLowerCase() === meName;
         const gaCls = p.ga == null ? '' : p.ga >= 70 ? 'ga-hi' : p.ga <= 45 ? 'ga-lo' : '';
-        const chips = chipsHTML(p);
-        // v-no-dupe-badge: MVP/ACE already shows on this same player's row in the MATCHUP section
-        // right above (badgeHTML, via cellName) — this collapsed DETAILS table doesn't repeat it,
-        // just the flag/duo/streak/cspm chips.
-        const nameCell = `<span class="pcell"><span class="pname">${nameLink(p.n)}</span>${chips}</span>`;
+        // v-no-dupe-badge: MVP/ACE and the flag/duo/streak/cspm chips already show on this same
+        // player's row in the MATCHUP section right above (badgeHTML/chipsHTML, via cellName) —
+        // this collapsed DETAILS table is the numeric breakdown (Rank/Pos/Champ/KDA/Dmg/CS/GA/
+        // Perf), not a second copy of the chip row.
+        const nameCell = `<span class="pcell"><span class="pname">${nameLink(p.n)}</span></span>`;
         // v4.18: full unabbreviated form ("Emerald I · 50 LP · 51%") — rankDetailLabel above,
         // shared with (built on the same parseRank as) the matchup rows' compact tag. Season
         // winrate shows whenever it exists (wr is null only when seasonGames is 0) — no longer

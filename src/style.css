@@ -68,8 +68,17 @@ input, select { background:var(--card); border:1px solid var(--line); color:var(
 .combo { position:relative; flex:1; min-width:220px; display:flex; }
 /* v4.36/v4.37: room for TWO overlay icon buttons on the input's right edge now (★ bookmark +
    🔗 profile-link copy — see #bmStar/#copyProfileLink below), not just the one — widened from 40px
-   so the input's own text never sits under either of them. */
-input#riotId { flex:1; min-width:200px; width:100%; padding-right:64px; }
+   so the input's own text never sits under either of them. v-badge-in-input: widened again for the
+   queue-status dot (#losingBadge), a third overlay sitting just left of the other two. */
+input#riotId { flex:1; min-width:200px; width:100%; padding-right:84px; }
+/* v-badge-in-input: sits inside the input, like #bmStar/#copyProfileLink below, rather than as a
+   separate pill outside it — a small colored dot (not a text pill: "FAVORED QUEUE ×5" doesn't fit
+   this space the way a single glyph star does), full label + explanation in the title tooltip. */
+#losingBadge { position:absolute; right:50px; top:50%; transform:translateY(-50%); line-height:1; }
+.queue-dot { font-size:15px; cursor:help; }
+.queue-dot.b-bad { color:var(--bad); }
+.queue-dot.b-mid { color:var(--mid); }
+.queue-dot.b-ok { color:var(--ok); }
 .keywrap { position:relative; display:inline-flex; }
 /* type="text" (not "password") so Chrome's password manager doesn't treat this as a login field
    and offer to save/generate a password for it — Chrome ignores autocomplete/data-*-ignore hints
@@ -95,7 +104,6 @@ button:disabled { opacity:.5; cursor:wait; }
 .head { display:flex; align-items:center; gap:12px; padding:14px 16px; cursor:pointer; flex-wrap:wrap; }
 .badge { font-weight:800; font-size:12px; padding:4px 10px; border-radius:99px; white-space:nowrap; }
 .b-ok { background:#123527; color:var(--ok);} .b-mid{ background:#3a2d10; color:var(--mid);} .b-bad{ background:#3a1616; color:var(--bad);} .b-live{ background:#3a1616; color:#e05d5d; }
-.b-neutral { background:transparent; color:var(--dim); border:1px solid var(--line); padding:3px 9px; }
 .live { background:#e05d5d; color:#2a0d0d; }
 .res-V { color:var(--ok); font-weight:700; } .res-D { color:var(--bad); font-weight:700; }
 .details { display:none; border-top:1px solid var(--line); padding:12px 16px; overflow-x:auto; }
@@ -230,7 +238,7 @@ td.you + td.you { border-left:none !important; }
 .gcard .row:hover { background:var(--line); }
 .gcard .details { display:none; border-top:1px solid var(--line); padding:12px 16px; overflow-x:auto; }
 .gcard.open .details { display:block; }
-.matchup { margin-bottom:16px; }
+.matchup { margin-bottom:16px; width:100%; table-layout:fixed; }
 /* top, not middle: a chip line on one side but not the other would otherwise shift that row's
    line 1 off the other side's, since middle-alignment centers each cell against the row's
    tallest content. Top-aligning keeps line 1 on a shared baseline regardless. */
@@ -242,7 +250,12 @@ td.you + td.you { border-left:none !important; }
    wp.red% (always sum to 100). v-wp-symmetry: both labels sit OUTSIDE wp-bar-wrap, one past each
    edge, in that team's own color — same treatment for both regardless of the split, so a lopsided
    game (e.g. 7%/93%) doesn't render one number inside the bar and the other floating outside it. */
-.wp-bar-wrap { position:relative; margin-top:6px; height:15px; }
+/* v-verdict-center: the verdict badge sits on its own line, the bar below it, both centered on
+   the full card width — same axis the DRAFT pill (.draft-pill-row) already centers on, so the
+   whole team-verdict stack reads as one aligned column instead of the bar centering on a
+   different, narrower axis than everything below it. */
+.team-verdict-row { text-align:center; margin-top:10px; }
+.wp-bar-wrap { position:relative; margin:6px auto 0; height:15px; max-width:220px; }
 .wp-bar { display:flex; height:100%; border-radius:99px; overflow:hidden; background:var(--line); }
 .wp-seg { display:flex; align-items:center; justify-content:center; min-width:0; overflow:hidden; }
 .wp-seg-blue { background:var(--blue); }
@@ -278,7 +291,7 @@ td.you + td.you { border-left:none !important; }
    shared column wide or, once capped, wrapping into a cramped few-words-per-line box. Its own
    full-width row below the table gives it real room; white-space:normal is just a safety net for
    an unusually long line rather than the thing doing the work now. */
-.draft-pill-row { text-align:center; margin-top:6px; }
+.draft-pill-row { text-align:center; margin-top:6px; margin-bottom:5px; }
 .draft-pill { display:inline-flex; align-items:center; padding:3px 8px; border:1px solid var(--line); border-radius:6px; font-size:11px; white-space:normal; max-width:100%; text-align:left; }
 .draft-pill.draft-good { border-color:var(--ok); }
 .draft-pill.draft-bad { border-color:var(--bad); }
@@ -292,7 +305,7 @@ td.you + td.you { border-left:none !important; }
 .matchup .teamrow td { border-top:2px solid var(--line); border-bottom:none; padding:10px 8px; }
 /* Autofill count in the TEAM footer (next to the duo suffix) — amber, same risk-family color as
    the autofill chip, since it's the same signal just surfaced at the team level. */
-.af-count { color:var(--mid); font-weight:400; }
+.team-stat { color:var(--mid); font-weight:400; }
 /* Each matchup player cell is two stacked lines: line one (see .p-main below) on top, every chip
    (MVP/ACE leading, then OTP/duo/flags/streak/cs/severity) on line two. v4.26: line one's element
    order now DOES differ per side — red mirrors blue around the table's center Favored column
