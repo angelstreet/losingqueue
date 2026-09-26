@@ -95,7 +95,6 @@ button:disabled { opacity:.5; cursor:wait; }
 .head { display:flex; align-items:center; gap:12px; padding:14px 16px; cursor:pointer; flex-wrap:wrap; }
 .badge { font-weight:800; font-size:12px; padding:4px 10px; border-radius:99px; white-space:nowrap; }
 .b-ok { background:#123527; color:var(--ok);} .b-mid{ background:#3a2d10; color:var(--mid);} .b-bad{ background:#3a1616; color:var(--bad);} .b-live{ background:#3a1616; color:#e05d5d; }
-.b-neutral { background:transparent; color:var(--dim); border:1px solid var(--line); padding:3px 9px; }
 .live { background:#e05d5d; color:#2a0d0d; }
 .res-V { color:var(--ok); font-weight:700; } .res-D { color:var(--bad); font-weight:700; }
 .details { display:none; border-top:1px solid var(--line); padding:12px 16px; overflow-x:auto; }
@@ -242,7 +241,12 @@ td.you + td.you { border-left:none !important; }
    wp.red% (always sum to 100). v-wp-symmetry: both labels sit OUTSIDE wp-bar-wrap, one past each
    edge, in that team's own color — same treatment for both regardless of the split, so a lopsided
    game (e.g. 7%/93%) doesn't render one number inside the bar and the other floating outside it. */
-.wp-bar-wrap { position:relative; margin-top:6px; height:15px; }
+/* v-verdict-center: the verdict badge sits on its own line, the bar below it, both centered on
+   the full card width — same axis the DRAFT pill (.draft-pill-row) already centers on, so the
+   whole team-verdict stack reads as one aligned column instead of the bar centering on a
+   different, narrower axis than everything below it. */
+.team-verdict-row { text-align:center; margin-top:10px; }
+.wp-bar-wrap { position:relative; margin:6px auto 0; height:15px; max-width:220px; }
 .wp-bar { display:flex; height:100%; border-radius:99px; overflow:hidden; background:var(--line); }
 .wp-seg { display:flex; align-items:center; justify-content:center; min-width:0; overflow:hidden; }
 .wp-seg-blue { background:var(--blue); }

@@ -1108,15 +1108,20 @@ function renderLosingBadge(games) {
   if (analyzed.length < QUEUE_STATUS_STREAK) { el.style.display = 'none'; el.innerHTML = ''; return; }
   const against = leadingStreak(games, isUnfairAgainst);
   const favor = leadingStreak(games, isFavoredFor);
+  // v-verdict-colors: reuses the EXACT same b-ok/b-mid/b-bad mapping the per-game FAIR/FAVORED/
+  // NOT FAIR verdict badges already use, instead of a bespoke good/bad/neutral scheme — the same
+  // classes meaning different things in two badges on the same page (b-ok read as FAIR in one and
+  // FAVORED in the other) was the real "not visible/consistent enough" problem, not the pill style
+  // itself. FAIR also drops "QUEUE" (just "FAIR") to match the per-game badge's own bare label.
   let cls, label, title;
   if (against >= QUEUE_STATUS_STREAK) {
     cls = 'b-bad'; label = against > QUEUE_STATUS_STREAK ? `LOSING QUEUE ×${against}` : 'LOSING QUEUE';
     title = `Last ${against} analyzed games in a row were stacked against this player (regardless of the actual results) — the matchmaker may be pushing them down`;
   } else if (favor >= QUEUE_STATUS_STREAK) {
-    cls = 'b-ok'; label = favor > QUEUE_STATUS_STREAK ? `FAVORED QUEUE ×${favor}` : 'FAVORED QUEUE';
+    cls = 'b-mid'; label = favor > QUEUE_STATUS_STREAK ? `FAVORED QUEUE ×${favor}` : 'FAVORED QUEUE';
     title = `Last ${favor} analyzed games in a row were stacked in this player's favor (regardless of the actual results)`;
   } else {
-    cls = 'b-neutral'; label = 'FAIR QUEUE';
+    cls = 'b-ok'; label = 'FAIR';
     title = `Matchmaking hasn't leaned consistently either way for the last ${QUEUE_STATUS_STREAK}+ analyzed games`;
   }
   el.innerHTML = `<span class="badge ${cls}" title="${esc(title)}">${esc(label)}</span>`;
@@ -2953,11 +2958,17 @@ function matchupHTML(g, rid, key = 'x') {
   // to its own row's widest content, so a match with longer names on one side (pure chance, not
   // structural) made that whole column visibly wider than the other.
   return `<table class="matchup">
-    <colgroup><col style="width:60px"><col><col style="width:70px"><col><col style="width:60px"></colgroup>
+    <colgroup><col style="width:60px"><col><col style="width:86px"><col><col style="width:60px"></colgroup>
     <tr><th class="champ-c"></th><th><span class="tm-blue">BLUE</span>${g.userTeam === 'blue' ? ' <span class="gold">YOU</span>' : ''}</th><th class="mid-v">Favored</th><th class="rgt"><span class="tm-red">RED</span>${g.userTeam === 'red' ? ' <span class="gold">YOU</span>' : ''}</th><th class="champ-c"></th></tr>
     ${rows}
-    <tr class="teamrow"><td colspan="2"><b><span class="tm-blue">TEAM</span> · ${blueWon ? 'win' : 'loss'} · ${teamGaText(gB, g.duoBonus?.blue, g.autofillCounts?.blue, otpCountOf('blue'), duoCountOf('blue'))}</b></td><td class="mid-v"><span class="badge ${verdictCls(g.matchmaking, g.direction)}" title="${esc(verdictTitle(g.matchmaking, g.direction, g.verdictTooltip))}">${verdictLabel(g.matchmaking, g.direction)}</span>${winProbHTML(g.winProb)}</td><td colspan="2" class="rgt"><b><span class="tm-red">TEAM</span> · ${blueWon ? 'loss' : 'win'} · ${teamGaText(gR, g.duoBonus?.red, g.autofillCounts?.red, otpCountOf('red'), duoCountOf('red'))}</b></td></tr>
-  </table>` + (draftPill ? `<div class="draft-pill-row">${draftPill}</div>` : '');
+    <tr class="teamrow"><td colspan="2"><b><span class="tm-blue">TEAM</span> · ${blueWon ? 'win' : 'loss'} · ${teamGaText(gB, g.duoBonus?.blue, g.autofillCounts?.blue, otpCountOf('blue'), duoCountOf('blue'))}</b></td><td class="mid-v"></td><td colspan="2" class="rgt"><b><span class="tm-red">TEAM</span> · ${blueWon ? 'loss' : 'win'} · ${teamGaText(gR, g.duoBonus?.red, g.autofillCounts?.red, otpCountOf('red'), duoCountOf('red'))}</b></td></tr>
+  </table>` +
+    // v-verdict-center: the verdict badge + win% bar used to live in the narrow mid-v <td>, so
+    // they centered on THAT column's axis — visibly off from the DRAFT pill below them, which
+    // centers on the full card width (see v-draft-pill-fullwidth). Moved out here so both blocks
+    // share the exact same center line.
+    `<div class="team-verdict-row"><span class="badge ${verdictCls(g.matchmaking, g.direction)}" title="${esc(verdictTitle(g.matchmaking, g.direction, g.verdictTooltip))}">${verdictLabel(g.matchmaking, g.direction)}</span>${winProbHTML(g.winProb)}</div>` +
+    (draftPill ? `<div class="draft-pill-row">${draftPill}</div>` : '');
 }
 
 // Column widths shared by both team tables (via an identical <colgroup> in each) so BLUE and
@@ -2979,11 +2990,11 @@ function detailsHTML(g, key = 'x', rid) {
       rows.map(p => {
         const isMe = p.n.replace('#', '-').toLowerCase() === meName;
         const gaCls = p.ga == null ? '' : p.ga >= 70 ? 'ga-hi' : p.ga <= 45 ? 'ga-lo' : '';
-        const chips = chipsHTML(p);
-        // v-no-dupe-badge: MVP/ACE already shows on this same player's row in the MATCHUP section
-        // right above (badgeHTML, via cellName) — this collapsed DETAILS table doesn't repeat it,
-        // just the flag/duo/streak/cspm chips.
-        const nameCell = `<span class="pcell"><span class="pname">${nameLink(p.n)}</span>${chips}</span>`;
+        // v-no-dupe-badge: MVP/ACE and the flag/duo/streak/cspm chips already show on this same
+        // player's row in the MATCHUP section right above (badgeHTML/chipsHTML, via cellName) —
+        // this collapsed DETAILS table is the numeric breakdown (Rank/Pos/Champ/KDA/Dmg/CS/GA/
+        // Perf), not a second copy of the chip row.
+        const nameCell = `<span class="pcell"><span class="pname">${nameLink(p.n)}</span></span>`;
         // v4.18: full unabbreviated form ("Emerald I · 50 LP · 51%") — rankDetailLabel above,
         // shared with (built on the same parseRank as) the matchup rows' compact tag. Season
         // winrate shows whenever it exists (wr is null only when seasonGames is 0) — no longer
