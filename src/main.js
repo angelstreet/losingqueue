@@ -2129,7 +2129,9 @@ function chipsHTML(p, oppChamp, suppressDuo) {
   // absolute) — a player with real career mastery on this champ who ISN'T currently a one-trick
   // on it (e.g. it's their 3rd-most-played champ, not their #1) gets this informational chip
   // instead of OTP, so the raw skill signal isn't lost even though it doesn't earn the OTP label.
-  if (p.flags?.includes('mastery')) c.push([`${Math.round((p.masteryPts || 0) / 1000)}k mastery`, 'Skilled on this champion but not playing it much lately', 'flag-mastery']);
+  // v-champ-mastery: the point count itself now lives under the champion portrait (champCell) —
+  // this chip just flags the "skilled but not currently OTP" signal, no need to repeat the number.
+  if (p.flags?.includes('mastery')) c.push(['mastery', 'Skilled on this champion but not playing it much lately', 'flag-mastery']);
   // Goes through netCounter, not a raw counterPenalty(p.champ, oppChamp) call — a curated
   // bidirectional matchup (a handful exist in lib/counters.mjs) is a wash for this specific
   // head-to-head, not a "countered" chip for both laners at once.

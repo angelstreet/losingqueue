@@ -229,7 +229,7 @@ td.you + td.you { border-left:none !important; }
    line 1 off the other side's, since middle-alignment centers each cell against the row's
    tallest content. Top-aligning keeps line 1 on a shared baseline regardless. */
 .matchup td { vertical-align:top; }
-.matchup .mid-v { text-align:center; white-space:nowrap; min-width:72px; padding-top:9px; }
+.matchup .mid-v { text-align:center; white-space:nowrap; min-width:60px; padding-top:9px; }
 .champ-mastery { font-size:9px; color:var(--dim); text-align:center; margin-top:2px; white-space:nowrap; }
 /* v4.27: win probability under the TEAM row's verdict badge — a horizontal bar (was a "BLUE 19% ·
    RED 81%" text line): one slim rounded track, a blue segment sized to wp.blue% and a red one to
@@ -266,7 +266,12 @@ td.you + td.you { border-left:none !important; }
    one block so it reads as a single distinct signal under the fairness badge/win-prob line rather
    than two loose rows). Border color follows the verdict (GOOD/BAD/EVEN); the verdict text inside
    is colored the same way, the trailing " — components" tail stays dim regardless. */
-.draft-pill { display:inline-flex; align-items:center; margin-top:5px; padding:3px 6px; border:1px solid var(--line); border-radius:6px; font-size:11px; white-space:nowrap; }
+/* v-mid-narrow: white-space:normal + a max-width (not nowrap) — the pill's own <td> shares the
+   SAME table column as every lane row's Favored badge (EVEN/BLUE +N/RED +N), so a long "— Caitlyn
+   countered by Samira −3" tail rendered nowrap was forcing that whole column wide on every row,
+   not just the footer's. Wrapping it onto 2-3 lines here keeps the column's real floor at the
+   short badge text instead. */
+.draft-pill { display:inline-flex; align-items:center; margin-top:5px; padding:3px 6px; border:1px solid var(--line); border-radius:6px; font-size:11px; white-space:normal; max-width:130px; text-align:left; }
 .draft-pill.draft-good { border-color:var(--ok); }
 .draft-pill.draft-bad { border-color:var(--bad); }
 .draft-verdict { font-weight:700; }
