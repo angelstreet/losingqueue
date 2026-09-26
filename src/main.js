@@ -4,6 +4,7 @@ import { STATS as CHAMP_STATS, PATCH as CHAMP_STATS_PATCH } from '../lib/champst
 import { ROLE_PAIRS, PATCH as DUO_SYNERGY_PATCH } from '../lib/duosynergy.mjs';
 import { BUILDS, PATCH as BUILDS_PATCH } from '../lib/builds.mjs';
 import { EXAMPLES as PRO_EXAMPLES } from '../lib/proExamples.mjs';
+import { version as APP_VERSION } from '../package.json';
 
 // Same-origin API in production (Vercel functions); Vite proxies /api in dev.
 const API = import.meta.env.VITE_API_URL || '';
@@ -24,7 +25,7 @@ const API = import.meta.env.VITE_API_URL || '';
 document.querySelector('#app').innerHTML = `
   <div class="site-header">
     <img class="lol-logo" src="https://upload.wikimedia.org/wikipedia/commons/d/d8/League_of_Legends_2019_vector.svg" alt="League of Legends">
-    <h1><span>Losing Queue</span> <span class="unofficial-badge">Unofficial</span> <span class="h1-right"><a href="/scoring.html" class="algo-link">ⓘ <span class="algo-full">How we score</span><span class="algo-short">Scoring</span></a><span id="clerkBtn"></span></span></h1>
+    <h1><span>Losing Queue</span> <span class="unofficial-badge">Unofficial</span> <span id="losingBadge" style="display:none"></span> <span class="h1-right"><a href="/scoring.html" class="algo-link">ⓘ <span class="algo-full">How we score</span><span class="algo-short">Scoring</span></a><span id="clerkBtn"></span></span></h1>
   </div>
   <div class="sub"><span class="sub-short">Was your game winnable or are you in a losing queue? Ranked Solo/Duo · pre-game form · duo detection · GA scores</span><span class="sub-more"> for all 10 players · proven by shared matches · official Riot API</span></div>
   <form id="f" autocomplete="off" onsubmit="return false">
@@ -36,8 +37,9 @@ document.querySelector('#app').innerHTML = `
     </div>
     <select id="games"><option>3</option><option selected>5</option><option>10</option></select>
     <select id="region"><option selected>euw</option><option>eune</option><option>na</option><option>kr</option></select>
-    <button id="go">Find games</button>
-    <button type="button" id="liveBtn" class="live">🔴 Live game</button>
+    <button id="go">Find</button>
+    <button type="button" id="liveBtn" class="live">🔴 Live</button>
+    <button type="button" id="analyzeAllBtn" style="display:none">Analyze all</button>
     <div class="keyrow">
       <div class="keywrap">
         <input id="apiKey" name="riot-api-key" placeholder="Your Riot API key (optional)" type="text" autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore>
@@ -56,7 +58,6 @@ document.querySelector('#app').innerHTML = `
     </div>
   </form>
   <div id="status"></div>
-  <div id="losingBadge" style="display:none"></div>
   <div id="list"></div>
   <div id="histWrap" style="display:none">
     <h3 style="margin:24px 0 8px">📜 Analyzed history</h3>
@@ -65,7 +66,7 @@ document.querySelector('#app').innerHTML = `
   </div>
   <div id="shareModal" class="modal-backdrop"></div>
   <div id="toast" class="toast"></div>
-  <footer class="foot"><a href="https://github.com/angelstreet/losingqueue" target="_blank" rel="noreferrer">⭐ Open source — star it on GitHub</a><span class="dim"> · MIT · not endorsed by Riot Games · </span><a href="/scoring.html" class="algo-link">ⓘ How we score</a></footer>`;
+  <footer class="foot"><a href="https://github.com/angelstreet/losingqueue" target="_blank" rel="noreferrer">⭐ Open source — star it on GitHub</a><span class="dim"> · MIT · not endorsed by Riot Games · v${APP_VERSION} · </span><a href="/scoring.html" class="algo-link">ⓘ How we score</a></footer>`;
 
 const $ = s => document.querySelector(s);
 $('#apiKey').value = localStorage.getItem('rgapi') || '';
@@ -870,6 +871,12 @@ async function liveSearch(attempt, headers) {
   $('#list').innerHTML = ''; // only clear the previous list once the new one is ready to replace it
   renderRows(data.games, $('#list'), 'm', CTX.riotId);
   listIsKeylessFallback = false;
+  // v-analyze-all: how many of the just-rendered rows still need a manual Analyze click — shown so
+  // the user can trigger them all in one go instead of clicking each row individually.
+  const unanalyzed = data.games.filter(g => !g.cached).length;
+  const allBtn = $('#analyzeAllBtn');
+  if (unanalyzed > 0) { allBtn.style.display = ''; allBtn.disabled = false; allBtn.textContent = `Analyze all (${unanalyzed})`; }
+  else { allBtn.style.display = 'none'; }
   // The rows speak for themselves (✓ badges already mark analyzed games) — no instructional
   // sentence needed once there's a list to look at; only the empty-results case still needs a
   // status message, since there's nothing on screen to explain otherwise.
@@ -957,6 +964,38 @@ $('#liveBtn').addEventListener('click', async () => {
   } finally { endBusy(); $('#liveBtn').innerHTML = liveLabel; }
 });
 
+// v-analyze-all: batch-triggers the exact same per-row analyze() a manual "Analyze" click would —
+// same button element, same spinner/disable/quota/409-retry handling — just looped sequentially
+// instead of the user clicking each row one at a time. Sequential (not Promise.all) on purpose:
+// the shared analyzer only allows one in-flight job at a time anyway (a parallel burst would just
+// 409 instead of actually running concurrently), and sequencing keeps quota errors legible — one
+// clear failure instead of 5 simultaneous ones. Snapshots the button list up front rather than
+// re-querying #list each iteration, since analyze() mutates each button's text as it completes
+// (would otherwise re-select an already-done row after its text stops matching 'Analyze').
+// Stops the whole batch on the first failure (bad/expired key, exhausted daily quota) instead of
+// retrying the same failure 4 more times — the remaining rows just stay as manual "Analyze"
+// buttons for the user to retry once whatever's wrong is fixed.
+$('#analyzeAllBtn').addEventListener('click', async () => {
+  const allBtn = $('#analyzeAllBtn');
+  const targets = Array.from(document.querySelectorAll('#list .mini:not(.icon-btn)')).filter(b => b.textContent.trim() === 'Analyze');
+  if (!targets.length) return;
+  allBtn.disabled = true;
+  let succeeded = 0;
+  for (let i = 0; i < targets.length; i++) {
+    allBtn.textContent = `Analyzing ${i + 1}/${targets.length}…`;
+    const btn = targets[i];
+    await analyze(btn.dataset.mid, btn, btn.dataset.key);
+    // analyze() catches its own errors internally (writes to #status, never rethrows) and only
+    // sets dataset.loaded on a genuine success — checking that instead of try/catch is what
+    // actually detects a failed item here.
+    if (btn.dataset.loaded !== '1') break;
+    succeeded++;
+  }
+  const remaining = targets.length - succeeded;
+  if (remaining > 0) { allBtn.disabled = false; allBtn.textContent = `Analyze all (${remaining})`; }
+  else allBtn.style.display = 'none';
+});
+
 async function checkLive(riotId, region, attempt = 0) {
   let sentKey = false;
   try {
@@ -1039,37 +1078,39 @@ function listedMatchIds() {
   return new Set(Array.from($('#list').querySelectorAll('[data-mid]')).map(el => el.dataset.mid));
 }
 
-// v4.11: "LOSING QUEUE?" badge — a real pattern the user flagged: 3+ consecutive analyzed games,
-// newest first, all NOT FAIR *against* them, suggests the matchmaker may be pushing them down
-// rather than just a run of bad luck. v4.15: user-reported concern this was (or looked like it
-// was) keying off the game's RESULT — audited, and it never has: isUnfairAgainst below checks
-// ONLY matchmaking/direction, never g.result/g.win, and this is the single source of truth
-// losingStreak calls per game (no other comparison exists in this function). Wins/losses are
-// deliberately irrelevant: a lost-but-FAIR game breaks the streak just as a won-but-NOT-FAIR-
-// against game continues it — the badge is about matchmaking imbalance, not the scoreboard.
-// Extracted into a named predicate specifically so this invariant is easy to audit at a glance,
-// not buried inside the loop.
+// v-queue-status: header-level "which way has matchmaking leaned lately" readout — evolved from
+// the old streak-only "LOSING QUEUE? ×N" badge (3+ CONSECUTIVE NOT-FAIR-against games) into a
+// fixed-window read of the last QUEUE_STATUS_WINDOW analyzed games, with a third neutral state
+// instead of just showing/hiding: LOSING QUEUE (against) / FAVORED QUEUE (for) / FAIR QUEUE
+// (neither reached the threshold). Wins/losses are still deliberately irrelevant — both predicates
+// check ONLY matchmaking/direction, the same fields the per-game FAIR/FAVORED/NOT FAIR verdict
+// itself uses, never g.result/g.win. THRESHOLD reuses the app's existing "3 is a real pattern, not
+// noise" convention (same number the old streak badge required) rather than requiring a literal
+// 5-for-5 sweep, which real matchmaking rarely produces even during an actual bad run.
+const QUEUE_STATUS_WINDOW = 5, QUEUE_STATUS_THRESHOLD = 3;
 const isUnfairAgainst = g => g.matchmaking === 'NOT FAIR' && g.direction === 'against';
-// Live snapshots (g.live) are excluded — they're pre-game, not a finished, judged result. Counts
-// the FULL streak (not capped at 3) so ×4/×5 etc. can be shown; breaks (and returns) at the first
-// analyzed game that doesn't match, so it only ever counts a genuinely unbroken run ending at the
-// most recent game.
-function losingStreak(games) {
-  let n = 0;
-  for (const g of games) {
-    if (g.live) continue; // final analyses only
-    if (isUnfairAgainst(g)) n++;
-    else break;
-  }
-  return n;
-}
+const isFavoredFor = g => g.matchmaking === 'FAVORED' && g.direction === 'favor';
 function renderLosingBadge(games) {
   const el = $('#losingBadge');
-  const n = losingStreak(games);
-  if (n < 3) { el.style.display = 'none'; el.innerHTML = ''; return; }
-  const label = n > 3 ? `LOSING QUEUE? ×${n}` : 'LOSING QUEUE?';
-  el.innerHTML = `<span class="badge b-bad" title="Last ${n} analyzed games were all stacked AGAINST this player (regardless of result) — the matchmaker may be pushing them down">${esc(label)}</span>`;
-  el.style.display = 'block';
+  // Live snapshots (g.live) are pre-game, not a finished/judged result — excluded before taking
+  // the window so a live entry never displaces a real analyzed game out of the last 5 count.
+  const recent = games.filter(g => !g.live).slice(0, QUEUE_STATUS_WINDOW);
+  if (recent.length < QUEUE_STATUS_WINDOW) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const against = recent.filter(isUnfairAgainst).length;
+  const favor = recent.filter(isFavoredFor).length;
+  let cls, label, title;
+  if (against >= QUEUE_STATUS_THRESHOLD) {
+    cls = 'b-bad'; label = 'LOSING QUEUE';
+    title = `${against} of the last ${QUEUE_STATUS_WINDOW} analyzed games were stacked against this player — the matchmaker may be pushing them down, regardless of the actual results`;
+  } else if (favor >= QUEUE_STATUS_THRESHOLD) {
+    cls = 'b-ok'; label = 'FAVORED QUEUE';
+    title = `${favor} of the last ${QUEUE_STATUS_WINDOW} analyzed games were stacked in this player's favor, regardless of the actual results`;
+  } else {
+    cls = 'b-neutral'; label = 'FAIR QUEUE';
+    title = `Matchmaking has been roughly balanced over the last ${QUEUE_STATUS_WINDOW} analyzed games (${against} against, ${favor} in favor)`;
+  }
+  el.innerHTML = `<span class="badge ${cls}" title="${esc(title)}">${esc(label)}</span>`;
+  el.style.display = 'inline-block';
 }
 
 async function loadHistory(offset) {
