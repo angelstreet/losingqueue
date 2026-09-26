@@ -212,6 +212,11 @@ td.you + td.you { border-left:none !important; }
 .col-kda { width:70px; }
 .col-badge { width:90px; }
 .col-badge .badge { font-size:10.5px; padding:3px 8px; }
+/* v-queue-status-placement: moved out of the h1 (generic site title, not player-specific) into
+   the search row instead — right next to the riotId input it's actually ABOUT — sized down to
+   match the form's own compact controls rather than the header's larger badge/pill scale. */
+#losingBadge { align-self:center; }
+#losingBadge .badge { font-size:10.5px; padding:3px 8px; }
 /* 96px was sized for the old absolute date ("38m · 29/07 18:06"); the short relative date
    ("38m · 2d ago") is comfortably shorter, so this shrinks with real slack to spare — 78px still
    covers the common cases ("Xm ago"/"Xh ago"/"Xd ago") with ellipsis as a safety net for rarer
@@ -413,6 +418,14 @@ td.you + td.you { border-left:none !important; }
 .modal-footer-actions { display:flex; justify-content:flex-end; margin-top:10px; }
 .ghost-download { background:none; border:0; color:var(--dim); font-size:12px; cursor:pointer; padding:4px 2px; }
 .ghost-download:hover { color:var(--txt); }
+.creator-panel { margin-top:14px; border-top:1px solid var(--line); padding-top:12px; color:var(--txt); }
+.creator-panel summary { cursor:pointer; font-weight:700; }
+.creator-preview { width:100%; max-height:190px; object-fit:contain; margin:12px 0; background:#0e1015; }
+.creator-controls,.creator-actions { display:flex; gap:10px; flex-wrap:wrap; margin:10px 0; }
+.creator-panel label { display:block; font-size:12px; color:var(--dim); margin-top:8px; }
+.creator-panel select,.creator-panel textarea,.creator-panel input:not([type=checkbox]) { display:block; width:100%; box-sizing:border-box; margin-top:4px; background:#20242d; color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:8px; }
+.creator-panel .creator-id { display:flex; align-items:center; gap:6px; }
+.creator-actions button { padding:8px 12px; cursor:pointer; }
 .note a { color:var(--ok); }
 #keyHelp { margin-top:8px; line-height:1.7; }
 h4 { margin:10px 0 2px; }
