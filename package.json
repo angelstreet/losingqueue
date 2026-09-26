@@ -8,7 +8,12 @@
     "dev:api": "node dev-server.mjs",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test tests/promotion.test.mjs"
+    "test": "node --test tests/promotion.test.mjs",
+    "promo:generate": "node scripts/promotion/generate.mjs",
+    "promo:validate": "node scripts/promotion/validate-content.mjs",
+    "promo:publish:youtube": "node scripts/promotion/publish-youtube.mjs",
+    "promo:publish:x": "node scripts/promotion/publish-x.mjs",
+    "promo:oauth:youtube": "node scripts/promotion/oauth-youtube.mjs"
   },
   "dependencies": {
     "@clerk/clerk-js": "^5.0.0",
@@ -16,6 +21,7 @@
     "jose": "^5.0.0"
   },
   "devDependencies": {
+    "playwright": "^1.62.0",
     "vite": "^6.0.0"
   }
 }

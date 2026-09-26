@@ -7,6 +7,7 @@ import { EXAMPLES as PRO_EXAMPLES } from '../lib/proExamples.mjs';
 import { version as APP_VERSION } from '../package.json';
 import { shareLinkFor as promotionShareLink, trackedLink } from './promotion/manifest.js';
 import { verticalPng, shortWebm } from './promotion/video-export.js';
+import { promotionEvent, shareAttribution } from './promotion/analytics.js';
 
 // Same-origin API in production (Vercel functions); Vite proxies /api in dev.
 const API = import.meta.env.VITE_API_URL || '';
@@ -834,6 +835,10 @@ async function loadDeepLink(riotId, matchId) {
       fetch(`${API}/api/history?riotId=${encodeURIComponent(riotId)}&offset=0&limit=10`),
     ]);
     const entryData = entryRes.ok ? await entryRes.json() : null;
+    if (entryData?.entry && shareAttribution().campaign !== 'unknown') {
+      sessionStorage.setItem('promotion_attribution', JSON.stringify(shareAttribution()));
+      promotionEvent('deep_link_loaded');
+    }
     const histData = histRes.ok ? await histRes.json() : null;
     let games = histData?.games || [];
     // Not already on the fetched page — synthesize a row for it in the exact shape /api/history's
@@ -1336,6 +1341,13 @@ async function analyze(matchId, btn, i, attempt = 0) {
     }
     if (!r.ok) throw new Error(data.error || r.status);
     const g = data.entry;
+    if (!data.cached && sessionStorage.getItem('promotion_attribution')) {
+      try {
+        const attribution = JSON.parse(sessionStorage.getItem('promotion_attribution'));
+        promotionEvent('new_analysis_after_share', attribution.source, attribution.campaign);
+        sessionStorage.removeItem('promotion_attribution');
+      } catch { sessionStorage.removeItem('promotion_attribution'); }
+    }
     succeeded = true;
     syncLastSearchAnalyzed(rid, matchId, g);
     // Row-summary updates (badge/one-liner) come FIRST now, and are unconditional on the details
@@ -1667,6 +1679,7 @@ function buildShareCaptureNode(cardEl, riotId) {
 
   const cardClone = cardEl.cloneNode(true);
   // The toggle applies only to the owner's label; other players stay private.
+  cardClone.querySelectorAll('.pname').forEach(el => { el.textContent = 'Player'; });
   cardClone.querySelectorAll('*').forEach(el => {
     if (el.children.length === 0 && el.textContent?.includes('#')) el.textContent = el.textContent.replace(/[^\s#]+#[^\s#]+/g, 'Player');
   });
@@ -1901,6 +1914,7 @@ async function onShareClick(btn, matchId, riotId, key, openCreator = false) {
       blob = await renderResultCardFallbackBlob(riotId, matchId, region);
     }
     shareImageCache.set(matchId, blob);
+    promotionEvent('image_generated');
     openShareModal(blob, riotId, matchId, openCreator);
   } catch {
     showToast('Could not generate the image.');
@@ -1976,6 +1990,7 @@ const SHARE_PLATFORMS = [
 // - Discord: no share-intent exists at all (see the comment above SHARE_PLATFORMS) — copy the
 //   link, open Discord's own web app, toast explaining why.
 async function handlePlatformClick(platform, gameUrl, fileName) {
+  promotionEvent('share_intent_opened', platform.id, 'player_share');
   if (platform.id === 'reddit') {
     triggerImageDownload(fileName);
     window.open(`https://www.reddit.com/submit?url=${encodeURIComponent(gameUrl)}&title=${encodeURIComponent(SHARE_TEXT)}`, '_blank', 'noopener,noreferrer');
@@ -2052,10 +2067,11 @@ function openShareModal(blob, riotId, matchId, openCreator = false) {
     $('#creatorShareX').onclick = () => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(captions.x)}`, '_blank', 'noopener,noreferrer');
   };
   $('#creatorPanel').addEventListener('toggle', () => { if ($('#creatorPanel').open) updateCreator().catch(() => showToast('Could not create content.')); });
+  $('#creatorPanel').addEventListener('toggle', () => { if ($('#creatorPanel').open) promotionEvent('creator_opened'); });
   if (openCreator) $('#creatorPanel').open = true;
   $('#creatorLocale').addEventListener('change', () => updateCreator().catch(() => showToast('Could not update caption.')));
   $('#creatorTone').addEventListener('change', () => updateCreator().catch(() => showToast('Could not update caption.')));
-  $('#creatorCopy').addEventListener('click', () => copyToClipboardOrToast($('#creatorCaption').value, 'Caption copied'));
+  $('#creatorCopy').addEventListener('click', () => { copyToClipboardOrToast($('#creatorCaption').value, 'Caption copied'); promotionEvent('caption_copied'); });
   $('#creatorShort').addEventListener('click', async e => {
     if (!creatorManifest || e.target.disabled) return;
     e.target.disabled = true;
@@ -2067,6 +2083,7 @@ function openShareModal(blob, riotId, matchId, openCreator = false) {
     };
     try {
       download(await shortWebm(creatorManifest, $('#creatorShowId').checked), 'webm');
+      promotionEvent('video_generated');
     } catch {
       try { download(await verticalPng(creatorManifest, $('#creatorShowId').checked), 'png'); showToast('Video unavailable — vertical PNG downloaded.'); }
       catch { showToast('Could not export Short.'); }

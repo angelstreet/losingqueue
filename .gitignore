@@ -1,5 +1,6 @@
 node_modules/
 dist/
+promotion-output/
 backend/data/games.json
 backend/data/matches/
 .env

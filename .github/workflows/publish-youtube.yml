@@ -1,0 +1,59 @@
+name: Prepare or publish YouTube Short
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Cached match deep link; leave empty for automatic selection'
+        required: false
+        type: string
+      publish:
+        description: 'Upload privately through the official YouTube API'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  youtube:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PROMOTION_AUTOMATION_TOKEN: ${{ secrets.PROMOTION_AUTOMATION_TOKEN }}
+      TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+      TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      PROMO_URL: ${{ inputs.url }}
+      PROMO_PUBLISH: ${{ inputs.publish }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Generate and validate
+        shell: bash
+        run: |
+          args=(--locale fr --tone challenge --formats short --out promotion-output)
+          if [[ -n "$PROMO_URL" ]]; then args+=(--url "$PROMO_URL"); else args+=(--auto); fi
+          node scripts/promotion/generate.mjs "${args[@]}"
+          node scripts/promotion/validate-content.mjs promotion-output
+      - name: Dry run or private upload
+        shell: bash
+        run: |
+          if [[ "$PROMO_PUBLISH" == true ]]; then
+            node scripts/promotion/publish-youtube.mjs --input promotion-output --publish
+          else
+            node scripts/promotion/publish-youtube.mjs --input promotion-output --dry-run
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: youtube-promotion-package
+          path: promotion-output/
+          retention-days: 7

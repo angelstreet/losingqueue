@@ -12,6 +12,10 @@ Enter a Riot ID, pick a game (or your **current live game**), and get a fairness
 
 See [ROADMAP.md](ROADMAP.md) for what's planned next.
 
+## Promote the project
+
+Create a caption and share your own analyzed game from the Share sheet. See [docs/PROMOTION.md](docs/PROMOTION.md) for the cached manifest, local package generator, and publishing safeguards.
+
 ![A matchup card showing a NOT FAIR-verdict game: five lane rows with champion icons, GA scores and chips (autofill, OTP, smurf, duo, countered), a Favored column, and a team-footer win-probability bar](public/screenshot.png)
 *A real analyzed game — matchmaking-side verdict (lane GA + duo synergy) split from the draft-side read (counter picks), win probability bar, and per-player chips for autofill/OTP/smurf/duo/streaks.*
 

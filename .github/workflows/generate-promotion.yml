@@ -1,0 +1,65 @@
+name: Generate promotion package
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Cached match deep link; leave empty to select automatically'
+        required: false
+        type: string
+      locale:
+        description: 'fr or en'
+        required: true
+        default: 'fr'
+        type: choice
+        options: [fr, en]
+      tone:
+        description: 'Caption tone'
+        required: true
+        default: 'challenge'
+        type: choice
+        options: [challenge, data, funny]
+      formats:
+        description: 'Comma-separated: x,square,short'
+        required: true
+        default: 'x,square,short'
+        type: string
+  schedule:
+    - cron: '17 9 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PROMOTION_AUTOMATION_TOKEN: ${{ secrets.PROMOTION_AUTOMATION_TOKEN }}
+      PROMO_URL: ${{ inputs.url }}
+      PROMO_LOCALE: ${{ inputs.locale || 'fr' }}
+      PROMO_TONE: ${{ inputs.tone || 'challenge' }}
+      PROMO_FORMATS: ${{ inputs.formats || 'x,square,short' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Generate one package
+        if: ${{ env.PROMO_URL != '' || env.PROMOTION_AUTOMATION_TOKEN != '' }}
+        shell: bash
+        run: |
+          args=(--locale "$PROMO_LOCALE" --tone "$PROMO_TONE" --formats "$PROMO_FORMATS" --out promotion-output)
+          if [[ -n "$PROMO_URL" ]]; then args+=(--url "$PROMO_URL"); else args+=(--auto); fi
+          node scripts/promotion/generate.mjs "${args[@]}"
+          node scripts/promotion/validate-content.mjs promotion-output
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ hashFiles('promotion-output/manifest.json') != '' }}
+        with:
+          name: promotion-package
+          path: promotion-output/
+          if-no-files-found: error
+          retention-days: 7

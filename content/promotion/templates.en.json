@@ -1,0 +1,5 @@
+{
+  "challenge": { "id": "en_challenge_01", "hook": "Was this ranked game winnable?", "x": "{hook} {verdict}. {url}", "youtubeTitle": "{hook} {verdict} #LeagueOfLegends", "youtubeDescription": "{hook} {verdict}. Heuristic analysis using Riot data. Unofficial tool, not endorsed by Riot Games. {url}" },
+  "data": { "id": "en_data_01", "hook": "This ranked game, by the numbers:", "x": "{hook} {verdict}. {url}", "youtubeTitle": "{hook} {verdict} #LeagueOfLegends", "youtubeDescription": "{hook} {verdict}. Heuristic analysis using Riot data. Unofficial tool, not endorsed by Riot Games. {url}" },
+  "funny": { "id": "en_funny_01", "hook": "Another ranked game to explain:", "x": "{hook} {verdict}. {url}", "youtubeTitle": "{hook} {verdict} #LeagueOfLegends", "youtubeDescription": "{hook} {verdict}. Heuristic analysis using Riot data. Unofficial tool, not endorsed by Riot Games. {url}" }
+}

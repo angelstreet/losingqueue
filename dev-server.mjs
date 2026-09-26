@@ -16,14 +16,25 @@ import analyze from './api/analyze.mjs';
 import history from './api/history.mjs';
 import bookmarks from './api/bookmarks.mjs';
 import live from './api/live.mjs';
+import promotion from './api/promotion.mjs';
+import promotionFeed from './api/promotion-feed.mjs';
+import shareEvent from './api/share-event.mjs';
 
 const PORT = process.env.PORT || 3131;
-const routes = { '/api/matches': matches, '/api/analyze': analyze, '/api/history': history, '/api/bookmarks': bookmarks, '/api/live': live };
+const routes = { '/api/matches': matches, '/api/analyze': analyze, '/api/history': history, '/api/bookmarks': bookmarks, '/api/live': live, '/api/promotion': promotion, '/api/promotion-feed': promotionFeed, '/api/share-event': shareEvent };
 
 createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   // minimal Vercel-style req/res polyfill
   req.query = Object.fromEntries(url.searchParams);
+  if (req.method === 'POST' && url.pathname === '/api/share-event') {
+    let body = '';
+    for await (const chunk of req) {
+      body += chunk;
+      if (body.length > 1000) return res.writeHead(413).end();
+    }
+    try { req.body = JSON.parse(body); } catch { return res.writeHead(400).end(); }
+  }
   res.status = code => { res.statusCode = code; return res; };
   res.json = obj => { res.setHeader('content-type', 'application/json'); res.setHeader('access-control-allow-origin', '*'); res.end(JSON.stringify(obj)); };
   const fn = routes[url.pathname];

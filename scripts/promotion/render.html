@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Promotion render</title>
+<style>html,body{margin:0;background:#0e1015}canvas{display:block}</style>
+<canvas id="card"></canvas>
+<script type="module">
+  import { drawVerticalCard, drawStaticCard } from '/vertical-card.js';
+  window.drawPromotion = (manifest, kind, phase = 4) => {
+    const canvas = document.getElementById('card');
+    if (kind === 'vertical') drawVerticalCard(canvas, manifest, phase);
+    else if (kind === 'x') drawStaticCard(canvas, manifest, 1200, 630);
+    else if (kind === 'square') drawStaticCard(canvas, manifest, 1080, 1080);
+    else throw new Error('Invalid format');
+    return [canvas.width, canvas.height];
+  };
+</script>
+</html>

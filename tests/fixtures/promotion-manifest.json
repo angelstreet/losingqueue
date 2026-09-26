@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "matchId": "EUW1_123",
+  "riotId": "Player#EUW",
+  "region": "euw",
+  "verdict": "NOT FAIR",
+  "direction": "against",
+  "result": "Defeat",
+  "champion": "Warwick",
+  "score": { "mine": 11, "theirs": 21 },
+  "winProbability": { "mine": 38, "theirs": 62 },
+  "reason": "A lopsided tier spread worked against you.",
+  "deepLink": "https://www.losingqueue.lol/?riot-search=Player%23EUW&match=EUW1_123",
+  "locale": "en",
+  "tone": "challenge"
+}
