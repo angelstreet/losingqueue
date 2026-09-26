@@ -68,8 +68,17 @@ input, select { background:var(--card); border:1px solid var(--line); color:var(
 .combo { position:relative; flex:1; min-width:220px; display:flex; }
 /* v4.36/v4.37: room for TWO overlay icon buttons on the input's right edge now (★ bookmark +
    🔗 profile-link copy — see #bmStar/#copyProfileLink below), not just the one — widened from 40px
-   so the input's own text never sits under either of them. */
-input#riotId { flex:1; min-width:200px; width:100%; padding-right:64px; }
+   so the input's own text never sits under either of them. v-badge-in-input: widened again for the
+   queue-status dot (#losingBadge), a third overlay sitting just left of the other two. */
+input#riotId { flex:1; min-width:200px; width:100%; padding-right:84px; }
+/* v-badge-in-input: sits inside the input, like #bmStar/#copyProfileLink below, rather than as a
+   separate pill outside it — a small colored dot (not a text pill: "FAVORED QUEUE ×5" doesn't fit
+   this space the way a single glyph star does), full label + explanation in the title tooltip. */
+#losingBadge { position:absolute; right:50px; top:50%; transform:translateY(-50%); line-height:1; }
+.queue-dot { font-size:15px; cursor:help; }
+.queue-dot.b-bad { color:var(--bad); }
+.queue-dot.b-mid { color:var(--mid); }
+.queue-dot.b-ok { color:var(--ok); }
 .keywrap { position:relative; display:inline-flex; }
 /* type="text" (not "password") so Chrome's password manager doesn't treat this as a login field
    and offer to save/generate a password for it — Chrome ignores autocomplete/data-*-ignore hints

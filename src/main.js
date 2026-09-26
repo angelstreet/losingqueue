@@ -31,11 +31,11 @@ document.querySelector('#app').innerHTML = `
   <form id="f" autocomplete="off" onsubmit="return false">
     <div class="combo">
       <input id="riotId" name="riot-search" placeholder="Game name #TAG — e.g. xDevilStreet#EUW" required autocomplete="off">
+      <span id="losingBadge" style="display:none"></span>
       <button type="button" id="bmStar" title="Bookmark this profile">☆</button>
       <button type="button" id="copyProfileLink" title="Copy a shareable link to this profile">🔗</button>
       <div id="bmDrop"></div>
     </div>
-    <span id="losingBadge" style="display:none"></span>
     <select id="games"><option>3</option><option selected>5</option><option>10</option></select>
     <select id="region"><option selected>euw</option><option>eune</option><option>na</option><option>kr</option></select>
     <button id="go">Find</button>
@@ -1126,7 +1126,11 @@ function renderLosingBadge(games) {
     cls = 'b-ok'; label = 'FAIR';
     title = `Matchmaking hasn't leaned consistently either way for the last ${QUEUE_STATUS_STREAK}+ analyzed games`;
   }
-  el.innerHTML = `<span class="badge ${cls}" title="${esc(title)}">${esc(label)}</span>`;
+  // v-badge-in-input: lives inside the riotId input now, like the star/link icons (#bmStar/
+  // #copyProfileLink) — a full-text pill ("FAVORED QUEUE ×5") doesn't fit that space the way a
+  // single glyph does, so this is a small colored dot instead; the actual label + explanation
+  // move entirely into the title tooltip (same content, just not printed inline any more).
+  el.innerHTML = `<span class="queue-dot ${cls}" title="${esc(label)} — ${esc(title)}">●</span>`;
   el.style.display = 'inline-block';
 }
 
@@ -2960,7 +2964,7 @@ function matchupHTML(g, rid, key = 'x') {
   // to its own row's widest content, so a match with longer names on one side (pure chance, not
   // structural) made that whole column visibly wider than the other.
   return `<table class="matchup">
-    <colgroup><col style="width:60px"><col><col style="width:86px"><col><col style="width:60px"></colgroup>
+    <colgroup><col style="width:60px"><col><col style="width:126px"><col><col style="width:60px"></colgroup>
     <tr><th class="champ-c"></th><th><span class="tm-blue">BLUE</span>${g.userTeam === 'blue' ? ' <span class="gold">YOU</span>' : ''}</th><th class="mid-v">Favored</th><th class="rgt"><span class="tm-red">RED</span>${g.userTeam === 'red' ? ' <span class="gold">YOU</span>' : ''}</th><th class="champ-c"></th></tr>
     ${rows}
     <tr class="teamrow"><td colspan="2"><b><span class="tm-blue">TEAM</span> · ${blueWon ? 'win' : 'loss'} · ${teamGaText(gB, g.duoBonus?.blue, g.autofillCounts?.blue, otpCountOf('blue'), duoCountOf('blue'))}</b></td><td class="mid-v"></td><td colspan="2" class="rgt"><b><span class="tm-red">TEAM</span> · ${blueWon ? 'loss' : 'win'} · ${teamGaText(gR, g.duoBonus?.red, g.autofillCounts?.red, otpCountOf('red'), duoCountOf('red'))}</b></td></tr>
