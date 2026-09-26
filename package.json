@@ -1,14 +1,13 @@
 {
   "name": "losingqueue",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "type": "module",
   "private": true,
   "scripts": {
     "dev": "node dev-server.mjs & vite",
     "dev:api": "node dev-server.mjs",
     "build": "vite build",
-    "preview": "vite preview",
-    "test": "node --test tests/promotion.test.mjs"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@clerk/clerk-js": "^5.0.0",

@@ -230,7 +230,7 @@ td.you + td.you { border-left:none !important; }
 .gcard .row:hover { background:var(--line); }
 .gcard .details { display:none; border-top:1px solid var(--line); padding:12px 16px; overflow-x:auto; }
 .gcard.open .details { display:block; }
-.matchup { margin-bottom:16px; }
+.matchup { margin-bottom:16px; width:100%; table-layout:fixed; }
 /* top, not middle: a chip line on one side but not the other would otherwise shift that row's
    line 1 off the other side's, since middle-alignment centers each cell against the row's
    tallest content. Top-aligning keeps line 1 on a shared baseline regardless. */
@@ -278,7 +278,7 @@ td.you + td.you { border-left:none !important; }
    shared column wide or, once capped, wrapping into a cramped few-words-per-line box. Its own
    full-width row below the table gives it real room; white-space:normal is just a safety net for
    an unusually long line rather than the thing doing the work now. */
-.draft-pill-row { text-align:center; margin-top:6px; }
+.draft-pill-row { text-align:center; margin-top:6px; margin-bottom:5px; }
 .draft-pill { display:inline-flex; align-items:center; padding:3px 8px; border:1px solid var(--line); border-radius:6px; font-size:11px; white-space:normal; max-width:100%; text-align:left; }
 .draft-pill.draft-good { border-color:var(--ok); }
 .draft-pill.draft-bad { border-color:var(--bad); }
@@ -292,7 +292,7 @@ td.you + td.you { border-left:none !important; }
 .matchup .teamrow td { border-top:2px solid var(--line); border-bottom:none; padding:10px 8px; }
 /* Autofill count in the TEAM footer (next to the duo suffix) — amber, same risk-family color as
    the autofill chip, since it's the same signal just surfaced at the team level. */
-.af-count { color:var(--mid); font-weight:400; }
+.team-stat { color:var(--mid); font-weight:400; }
 /* Each matchup player cell is two stacked lines: line one (see .p-main below) on top, every chip
    (MVP/ACE leading, then OTP/duo/flags/streak/cs/severity) on line two. v4.26: line one's element
    order now DOES differ per side — red mirrors blue around the table's center Favored column
