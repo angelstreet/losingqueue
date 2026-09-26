@@ -5,8 +5,6 @@ import { ROLE_PAIRS, PATCH as DUO_SYNERGY_PATCH } from '../lib/duosynergy.mjs';
 import { BUILDS, PATCH as BUILDS_PATCH } from '../lib/builds.mjs';
 import { EXAMPLES as PRO_EXAMPLES } from '../lib/proExamples.mjs';
 import { version as APP_VERSION } from '../package.json';
-import { shareLinkFor as promotionShareLink, trackedLink } from './promotion/manifest.js';
-import { verticalPng, shortWebm } from './promotion/video-export.js';
 
 // Same-origin API in production (Vercel functions); Vite proxies /api in dev.
 const API = import.meta.env.VITE_API_URL || '';
@@ -1083,12 +1081,12 @@ function listedMatchIds() {
 
 // v-queue-status: header-level "which way has matchmaking leaned lately" readout. v2: a bare
 // "3 of the last 5" (v1) could fire from a non-consecutive spread (games 1/3/5 against, 2/4 fine)
-// — not a real pattern, just noise scattered across the window. Reverted to requiring a genuine
-// CONSECUTIVE run ending at the most recent game (same shape as the original streak-only badge),
-// just computed for both directions now instead of only "against": LOSING QUEUE (3+ in a row
-// against) / FAVORED QUEUE (3+ in a row for) / FAIR QUEUE (neither streak reached 3). Wins/losses
-// are still deliberately irrelevant — both predicates check ONLY matchmaking/direction, the same
-// fields the per-game FAIR/FAVORED/NOT FAIR verdict itself uses, never g.result/g.win.
+// — not a real pattern, just noise scattered across the window. Requires a genuine CONSECUTIVE
+// run ending at the most recent game (same shape as the original streak-only badge), just computed
+// for both directions now instead of only "against": LOSING QUEUE (3+ in a row against) / FAVORED
+// QUEUE (3+ in a row for) / FAIR QUEUE (neither streak reached 3). Wins/losses are still
+// deliberately irrelevant — both predicates check ONLY matchmaking/direction, the same fields the
+// per-game FAIR/FAVORED/NOT FAIR verdict itself uses, never g.result/g.win.
 const QUEUE_STATUS_STREAK = 3;
 const isUnfairAgainst = g => g.matchmaking === 'NOT FAIR' && g.direction === 'against';
 const isFavoredFor = g => g.matchmaking === 'FAVORED' && g.direction === 'favor';
@@ -1237,7 +1235,6 @@ function renderRows(games, container, prefix, rid) {
     // v4.39: same always-rendered/action-hidden treatment as reanalyzeBtn above, revealed via
     // id="s${key}" once a row's first analyze() succeeds.
     const shareBtn = `<button type="button" class="icon-btn share-btn${g.cached ? '' : ' action-hidden'}" id="s${key}" data-mid="${esc(g.matchId)}" data-key="${key}" data-rid="${esc(rid)}" title="Share this game">${shareIconSvg()}</button>`;
-    const createBtn = `<button type="button" class="icon-btn create-btn${g.cached ? '' : ' action-hidden'}" id="c${key}" data-mid="${esc(g.matchId)}" data-key="${key}" data-rid="${esc(rid)}" title="Create content">Create content</button>`;
     return `<div class="gcard" id="g${key}">
       <div class="row">
         <span class="col-res">${resultEl}</span>
@@ -1248,14 +1245,13 @@ function renderRows(games, container, prefix, rid) {
         <span class="one-h" id="o${key}" title="${oneLiner}">${oneLinerHTML}</span>
         <button class="mini${g.wasLive ? ' wasLive-ready' : ''}" id="v${key}" data-mid="${esc(g.matchId)}" data-key="${key}" data-rid="${esc(rid)}"${g.wasLive ? ' data-force="1" title="Your live-reviewed game just ended — click for the final analysis"' : ''}>${g.cached ? '✓ View' : 'Analyze'}</button>
         ${reanalyzeBtn}
-        ${shareBtn}${createBtn}
+        ${shareBtn}
       </div>
       <div class="details" id="d${key}"></div>
     </div>`;
   }).join('');
   container.querySelectorAll('.mini').forEach(b => b.addEventListener('click', () => analyze(b.dataset.mid, b, b.dataset.key)));
   container.querySelectorAll('.share-btn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); onShareClick(b, b.dataset.mid, b.dataset.rid, b.dataset.key); }));
-  container.querySelectorAll('.create-btn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); onShareClick(b, b.dataset.mid, b.dataset.rid, b.dataset.key, true); }));
 }
 
 // v4.40: clicking anywhere on a row's summary line (.row — champion name, KDA, badge, date, the
@@ -1451,7 +1447,6 @@ async function analyze(matchId, btn, i, attempt = 0) {
         // exactly the moment they become usable. Cheap no-op for an already-cached row.
         document.getElementById('r' + i)?.classList.remove('action-hidden');
         document.getElementById('s' + i)?.classList.remove('action-hidden');
-        document.getElementById('c' + i)?.classList.remove('action-hidden');
       } else {
         btn.textContent = 'Analyze';
         btn.disabled = false;
@@ -1487,7 +1482,7 @@ async function analyze(matchId, btn, i, attempt = 0) {
 // (ddragon/communitydragon/wikimedia all serve permissive CORS, already relied on by the
 // hand-drawn fallback further below) does NOT taint a canvas — only the foreignObject path did.
 function shareLinkFor(riotId, matchId) {
-  return promotionShareLink(location.href, riotId, matchId);
+  return `${location.origin}${location.pathname}?riot-search=${encodeURIComponent(riotId)}&match=${encodeURIComponent(matchId)}`;
 }
 // v4.37: user feedback — the 📤 emoji read as out of place next to the app's existing icon
 // language (↻ re-analyze: small, monochrome, symbolic). Same "share-2" node-and-lines glyph used
@@ -1661,15 +1656,11 @@ function buildShareCaptureNode(cardEl, riotId) {
   wrap.appendChild(headerClone);
 
   const label = document.createElement('div');
-  label.textContent = riotId || 'Player';
+  label.textContent = riotId;
   label.style.cssText = 'font-size:20px; font-weight:700; color:#e8eaf0; margin:14px 0 18px;';
   wrap.appendChild(label);
 
   const cardClone = cardEl.cloneNode(true);
-  // The toggle applies only to the owner's label; other players stay private.
-  cardClone.querySelectorAll('*').forEach(el => {
-    if (el.children.length === 0 && el.textContent?.includes('#')) el.textContent = el.textContent.replace(/[^\s#]+#[^\s#]+/g, 'Player');
-  });
   cardClone.classList.add('open'); // defensive — the caller already ensures this on the live element before cloning
   cardClone.querySelectorAll('.row > button').forEach(b => b.remove()); // Hide/View, ↻ re-analyze, 📤 share
   wrap.appendChild(cardClone);
@@ -1854,12 +1845,12 @@ async function renderResultCardFallbackBlob(riotId, matchId, region) {
   const data = await r.json();
   if (!r.ok || !data.entry) throw new Error(data.error || 'Game not found');
   try {
-    return await canvasToBlob(await renderResultCardFallback(data.entry, '', true));
+    return await canvasToBlob(await renderResultCardFallback(data.entry, riotId, true));
   } catch {
     // Tainted-canvas export failure — the ddragon icon loaded but didn't actually carry a CORS
     // header permissive enough for export (or some other draw-time hiccup). Retry with nothing
     // but locally-drawn shapes/text on the canvas, which can't taint it a second time.
-    return await canvasToBlob(await renderResultCardFallback(data.entry, '', false));
+    return await canvasToBlob(await renderResultCardFallback(data.entry, riotId, false));
   }
 }
 // v4.38: session-lifetime cache of generated share images, keyed by matchId — a repeated Share
@@ -1872,14 +1863,14 @@ const shareImageCache = new Map();
 // v4.36: the Share button's click handler. No "Generating image..." page text anywhere — the
 // loading state lives entirely in the button itself (spinner, same pattern analyze() already uses
 // for View/↻), and the result opens in a modal rather than triggering an immediate download.
-async function onShareClick(btn, matchId, riotId, key, openCreator = false) {
+async function onShareClick(btn, matchId, riotId, key) {
   if (btn.disabled) return;
   const prevHTML = btn.innerHTML;
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>';
   try {
     const cached = shareImageCache.get(matchId);
-    if (cached) { openShareModal(cached, riotId, matchId, openCreator); return; }
+    if (cached) { openShareModal(cached, riotId, matchId); return; }
     const viewBtn = document.getElementById('v' + key);
     const card = document.getElementById('g' + key);
     if (!card || !viewBtn) throw new Error('Card not found');
@@ -1896,12 +1887,12 @@ async function onShareClick(btn, matchId, riotId, key, openCreator = false) {
     const region = CTX.riotId === riotId ? CTX.region : regionFromMatchId(matchId);
     let blob;
     try {
-      blob = await captureShareImage(card, '');
+      blob = await captureShareImage(card, riotId);
     } catch {
       blob = await renderResultCardFallbackBlob(riotId, matchId, region);
     }
     shareImageCache.set(matchId, blob);
-    openShareModal(blob, riotId, matchId, openCreator);
+    openShareModal(blob, riotId, matchId);
   } catch {
     showToast('Could not generate the image.');
   } finally {
@@ -1994,7 +1985,7 @@ async function handlePlatformClick(platform, gameUrl, fileName) {
   };
   window.open(urls[platform.id], '_blank', 'noopener,noreferrer');
 }
-function openShareModal(blob, riotId, matchId, openCreator = false) {
+function openShareModal(blob, riotId, matchId) {
   closeShareModal();
   shareModalObjUrl = URL.createObjectURL(blob);
   const fileName = `losingqueue-${matchId}.png`;
@@ -2020,72 +2011,16 @@ function openShareModal(blob, riotId, matchId, openCreator = false) {
       <div class="modal-footer-actions">
         <button type="button" class="ghost-download" id="shModalDownload">⬇ Download image</button>
       </div>
-      <details class="creator-panel" id="creatorPanel">
-        <summary>Create content</summary>
-        <img class="creator-preview" src="${shareModalObjUrl}" alt="Result card preview">
-        <div class="creator-controls">
-          <label>Language <select id="creatorLocale"><option value="en">English</option><option value="fr">Français</option></select></label>
-          <label>Tone <select id="creatorTone"><option value="challenge">Challenge</option><option value="data">Data</option><option value="funny">Funny</option></select></label>
-        </div>
-        <label class="creator-id"><input type="checkbox" id="creatorShowId"> Show my Riot ID in image</label>
-        <label>X caption <textarea id="creatorCaption" rows="4" readonly></textarea></label>
-        <label>YouTube title <input id="creatorTitle" readonly></label>
-        <label>YouTube description <textarea id="creatorDescription" rows="4" readonly></textarea></label>
-        <div class="creator-actions"><button type="button" id="creatorCopy">Copy caption</button><button type="button" id="creatorShareX">Share on X</button><button type="button" id="creatorShort">Download Short</button></div>
-      </details>
     </div>`;
   modal.classList.add('open');
   $('#shModalClose').addEventListener('click', closeShareModal);
   modal.addEventListener('click', e => { if (e.target === modal) closeShareModal(); });
   $('#shModalCopyLink').addEventListener('click', () => copyToClipboardOrToast(gameUrl, 'Link copied to clipboard'));
   $('#shModalDownload').addEventListener('click', () => triggerImageDownload(fileName));
-  let creatorManifest = null;
-  const updateCreator = async () => {
-    const region = CTX.riotId === riotId ? CTX.region : regionFromMatchId(matchId);
-    const response = await fetch(`${API}/api/promotion?riotId=${encodeURIComponent(riotId)}&matchId=${encodeURIComponent(matchId)}&region=${region}&locale=${$('#creatorLocale').value}&tone=${$('#creatorTone').value}`);
-    if (!response.ok) throw new Error('Could not load cached promotion content');
-    const { manifest, captions } = await response.json();
-    creatorManifest = manifest;
-    $('#creatorCaption').value = captions.x;
-    $('#creatorTitle').value = captions.youtubeTitle;
-    $('#creatorDescription').value = captions.youtubeDescription;
-    $('#creatorShareX').onclick = () => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(captions.x)}`, '_blank', 'noopener,noreferrer');
-  };
-  $('#creatorPanel').addEventListener('toggle', () => { if ($('#creatorPanel').open) updateCreator().catch(() => showToast('Could not create content.')); });
-  if (openCreator) $('#creatorPanel').open = true;
-  $('#creatorLocale').addEventListener('change', () => updateCreator().catch(() => showToast('Could not update caption.')));
-  $('#creatorTone').addEventListener('change', () => updateCreator().catch(() => showToast('Could not update caption.')));
-  $('#creatorCopy').addEventListener('click', () => copyToClipboardOrToast($('#creatorCaption').value, 'Caption copied'));
-  $('#creatorShort').addEventListener('click', async e => {
-    if (!creatorManifest || e.target.disabled) return;
-    e.target.disabled = true;
-    const download = (blob, ext) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = `losingqueue-${matchId}-short.${ext}`;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 30_000);
-    };
-    try {
-      download(await shortWebm(creatorManifest, $('#creatorShowId').checked), 'webm');
-    } catch {
-      try { download(await verticalPng(creatorManifest, $('#creatorShowId').checked), 'png'); showToast('Video unavailable — vertical PNG downloaded.'); }
-      catch { showToast('Could not export Short.'); }
-    } finally { e.target.disabled = false; }
-  });
-  $('#creatorShowId').addEventListener('change', async e => {
-    const card = document.getElementById('g' + document.querySelector(`.share-btn[data-mid="${CSS.escape(matchId)}"]`)?.dataset.key);
-    if (!card) return;
-    try {
-      const next = await captureShareImage(card, e.target.checked ? riotId : '');
-      URL.revokeObjectURL(shareModalObjUrl);
-      shareModalObjUrl = URL.createObjectURL(next);
-      $('.creator-preview').src = shareModalObjUrl;
-    } catch { showToast('Could not update image.'); }
-  });
   $('#shModalPlatforms').addEventListener('click', e => {
     const btn = e.target.closest('.platform-item'); if (!btn) return;
     const platform = SHARE_PLATFORMS.find(p => p.id === btn.dataset.platform);
-    if (platform) handlePlatformClick(platform, trackedLink(gameUrl, platform.id, 'share_default_01'), fileName);
+    if (platform) handlePlatformClick(platform, gameUrl, fileName);
   });
 }
 

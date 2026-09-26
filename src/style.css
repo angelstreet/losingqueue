@@ -418,14 +418,6 @@ td.you + td.you { border-left:none !important; }
 .modal-footer-actions { display:flex; justify-content:flex-end; margin-top:10px; }
 .ghost-download { background:none; border:0; color:var(--dim); font-size:12px; cursor:pointer; padding:4px 2px; }
 .ghost-download:hover { color:var(--txt); }
-.creator-panel { margin-top:14px; border-top:1px solid var(--line); padding-top:12px; color:var(--txt); }
-.creator-panel summary { cursor:pointer; font-weight:700; }
-.creator-preview { width:100%; max-height:190px; object-fit:contain; margin:12px 0; background:#0e1015; }
-.creator-controls,.creator-actions { display:flex; gap:10px; flex-wrap:wrap; margin:10px 0; }
-.creator-panel label { display:block; font-size:12px; color:var(--dim); margin-top:8px; }
-.creator-panel select,.creator-panel textarea,.creator-panel input:not([type=checkbox]) { display:block; width:100%; box-sizing:border-box; margin-top:4px; background:#20242d; color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:8px; }
-.creator-panel .creator-id { display:flex; align-items:center; gap:6px; }
-.creator-actions button { padding:8px 12px; cursor:pointer; }
 .note a { color:var(--ok); }
 #keyHelp { margin-top:8px; line-height:1.7; }
 h4 { margin:10px 0 2px; }
