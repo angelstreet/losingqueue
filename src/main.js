@@ -2199,6 +2199,14 @@ const rankLabel = rk => rk ? rk.replace(/\s*\d+LP$/, '') : rk;
 // "Tier Div · NN LP" string) that both rankTag (matchup rows) and rankDetailLabel (details table)
 // build on, so the two never disagree about what a given rank string means.
 const RANK_TAG_LETTER = { Iron: 'I', Bronze: 'B', Silver: 'S', Gold: 'G', Platinum: 'P', Emerald: 'E', Diamond: 'D', Master: 'M', Grandmaster: 'GM', Challenger: 'C' };
+// v-rank-color: the traditional per-tier ladder colors (iron gray, bronze copper, silver, gold,
+// platinum teal, emerald green, diamond blue, master/GM/challenger apex colors) — a bare letter
+// tag ("S2" vs "E3") reads as one flat color otherwise, so telling two very different tiers apart
+// takes actually parsing the letter instead of a glance.
+const RANK_TIER_COLOR = {
+  Iron: '#8a8a86', Bronze: '#b3703c', Silver: '#a7adb8', Gold: '#e0b23d', Platinum: '#4fd1c5',
+  Emerald: '#3fc27a', Diamond: '#5aa9e6', Master: '#b06fe0', Grandmaster: '#e0555a', Challenger: '#f2e14c',
+};
 function parseRank(rankStr) {
   const m = rankStr && /^(\S+)\s+(\S+)\s+(\d+)LP$/.exec(rankStr);
   if (!m) return null;
@@ -2207,7 +2215,7 @@ function parseRank(rankStr) {
   if (!letter) return null;
   const isApex = tierWord === 'Master' || tierWord === 'Grandmaster' || tierWord === 'Challenger';
   const abbrev = isApex ? letter : `${letter}${{ IV: 4, III: 3, II: 2, I: 1 }[div] ?? ''}`;
-  return { abbrev, full: `${tierWord} ${div} · ${lp} LP` };
+  return { abbrev, full: `${tierWord} ${div} · ${lp} LP`, color: RANK_TIER_COLOR[tierWord] };
 }
 // v4.18: tag extended from rank-only to rank·winrate ("P3 · 51%") — a rank number alone doesn't
 // say whether that's a strong or weak account for the tier; season winrate does. wr/seasonGames
@@ -2228,7 +2236,7 @@ function rankTag(rankStr, wr, seasonGames) {
       title += ` · ${wr}%`;
     }
   }
-  return { label, title };
+  return { label, title, color: p.color };
 }
 // Details table's rank column: the full, unabbreviated form ("Emerald I · 50 LP · 51%") — more
 // room there than the compact matchup-row tag, so no need to abbreviate the tier name. Falls back
@@ -2244,8 +2252,9 @@ function rankDetailLabel(rankStr, wr) {
 // between direct lane opponents was completely invisible in the lane table (just "BLUE +6", no
 // rank shown anywhere). Division index: tier*4 + division-within-tier (IV=0..I=3) — apex tiers
 // collapse to their tier base, same reasoning as rankTag above. 2 GA per division of gap, capped
-// at ±8, added ONCE per lane (not once per side) so it can never contradict the engine's version.
-const RANK_LANE_WEIGHT = 2, RANK_LANE_CAP = 8;
+// at ±16 (mirrors lib/riot.mjs's own cap exactly — must stay identical, or this lane preview
+// disagrees with the engine's real verdict), added ONCE per lane (not once per side).
+const RANK_LANE_WEIGHT = 2, RANK_LANE_CAP = 16;
 function rankDivisionIndex(rankStr) {
   if (!rankStr || rankStr === 'Unranked') return null;
   const [tierWord, div] = rankStr.split(' ');
@@ -2712,26 +2721,30 @@ function matchupHTML(g, rid, key = 'x') {
     // no games yet), full rank+LP+W-L in the title. Unranked renders nothing rather than an empty
     // tag.
     const rt = rankTag(p.rank, p.wr, p.seasonGames);
-    const rank = rt ? `<span class="rank-tag dim" title="${esc(rt.title)}">${esc(rt.label)}</span>` : '';
+    // v-rank-color: colored by tier (RANK_TIER_COLOR) instead of the flat .dim gray, so a Silver
+    // tag and an Emerald tag read as visibly different tiers at a glance, not just different text.
+    const rank = rt ? `<span class="rank-tag" style="color:${rt.color};border-color:${rt.color}" title="${esc(rt.title)}">${esc(rt.label)}</span>` : '';
     const perf = perfHTML(p, `${key}-perf-${side}`);
     // v4.25/v4.26: the non-pushed content stays bundled in one inline span (p-main-info) so
     // .p-main can be a flex row without collapsing the plain-space joins between its tokens —
     // flexbox only treats non-whitespace text runs as their own anonymous item, so a bare " "
     // joiner between two sibling spans would otherwise vanish once the parent becomes
-    // display:flex. v-literal-mirror: RED is now the exact reverse of BLUE's token order —
-    // blue reads place,name,kda,GA,rank,perf outer-to-center; red reads perf,rank,GA,kda,name,
-    // place center-to-outer — so reading either row from its own outer edge inward gives the
-    // identical sequence (place,name,kda,GA,rank,perf). Only the single token nearest each row's
-    // OWN outer edge (rank+perf on blue, place alone on red) needs the .p-cell-edge margin-left:
-    // auto push; everything else is first in flex order and already hugs the other end for free.
+    // display:flex. v-literal-mirror: outer-to-center reads place,name,kda,GA,rank,perf on BOTH
+    // sides (RED is the exact reverse: perf,rank,GA,kda,name,place center-to-outer) — split into
+    // two groups at the same point in that sequence (place+name+kda vs GA+rank+perf) so the split
+    // itself sits at mirrored positions too, not just the token order. Each side pushes whichever
+    // group needs to reach its OWN outer edge via .p-cell-edge's margin-left:auto — place+name+kda
+    // for blue is already first in flex order (free), so blue pushes GA+rank+perf right toward
+    // center; red's natural flow-start IS the center edge, so red pushes kda+name+place right
+    // toward its own outer edge instead, keeping GA+rank+perf unpushed on the left.
     let main;
     if (side === 'red') {
-      const cluster = [perf.chip, rank, ga, kda, name].filter(Boolean).join(' ');
-      const edge = [place].filter(Boolean).join(' ');
+      const cluster = [perf.chip, rank, ga].filter(Boolean).join(' ');
+      const edge = [kda, name, place].filter(Boolean).join(' ');
       main = `<span class="p-main-info">${cluster}</span>` + (edge ? `<span class="p-cell-edge">${edge}</span>` : '');
     } else {
-      const info = [place, name, kda, ga].filter(Boolean).join(' ');
-      const edge = [rank, perf.chip].filter(Boolean).join(' ');
+      const info = [place, name, kda].filter(Boolean).join(' ');
+      const edge = [ga, rank, perf.chip].filter(Boolean).join(' ');
       main = `<span class="p-main-info">${info}</span>` + (edge ? `<span class="p-cell-edge">${edge}</span>` : '');
     }
     // v-two-lines: the "build" chip joins the rest of the chip group instead of being appended as
