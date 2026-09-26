@@ -1088,12 +1088,12 @@ function listedMatchIds() {
 
 // v-queue-status: header-level "which way has matchmaking leaned lately" readout. v2: a bare
 // "3 of the last 5" (v1) could fire from a non-consecutive spread (games 1/3/5 against, 2/4 fine)
-// — not a real pattern, just noise scattered across the window. Reverted to requiring a genuine
-// CONSECUTIVE run ending at the most recent game (same shape as the original streak-only badge),
-// just computed for both directions now instead of only "against": LOSING QUEUE (3+ in a row
-// against) / FAVORED QUEUE (3+ in a row for) / FAIR QUEUE (neither streak reached 3). Wins/losses
-// are still deliberately irrelevant — both predicates check ONLY matchmaking/direction, the same
-// fields the per-game FAIR/FAVORED/NOT FAIR verdict itself uses, never g.result/g.win.
+// — not a real pattern, just noise scattered across the window. Requires a genuine CONSECUTIVE
+// run ending at the most recent game (same shape as the original streak-only badge), just computed
+// for both directions now instead of only "against": LOSING QUEUE (3+ in a row against) / FAVORED
+// QUEUE (3+ in a row for) / FAIR QUEUE (neither streak reached 3). Wins/losses are still
+// deliberately irrelevant — both predicates check ONLY matchmaking/direction, the same fields the
+// per-game FAIR/FAVORED/NOT FAIR verdict itself uses, never g.result/g.win.
 const QUEUE_STATUS_STREAK = 3;
 const isUnfairAgainst = g => g.matchmaking === 'NOT FAIR' && g.direction === 'against';
 const isFavoredFor = g => g.matchmaking === 'FAVORED' && g.direction === 'favor';
