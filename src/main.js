@@ -40,7 +40,7 @@ document.querySelector('#app').innerHTML = `
     <select id="region"><option selected>euw</option><option>eune</option><option>na</option><option>kr</option></select>
     <button id="go">Find</button>
     <button type="button" id="liveBtn" class="live">🔴 Live</button>
-    <button type="button" id="analyzeAllBtn" style="display:none">Analyze</button>
+    <button type="button" id="analyzeAllBtn" disabled>Analyze</button>
     <div class="keyrow">
       <div class="keywrap">
         <input id="apiKey" name="riot-api-key" placeholder="Your Riot API key (optional)" type="text" autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore>
@@ -872,12 +872,14 @@ async function liveSearch(attempt, headers) {
   $('#list').innerHTML = ''; // only clear the previous list once the new one is ready to replace it
   renderRows(data.games, $('#list'), 'm', CTX.riotId);
   listIsKeylessFallback = false;
-  // v-analyze-all: how many of the just-rendered rows still need a manual Analyze click — shown so
-  // the user can trigger them all in one go instead of clicking each row individually.
+  // v-analyze-all: how many of the just-rendered rows still need a manual Analyze click — lets
+  // the user trigger them all in one go instead of clicking each row individually. Always visible
+  // next to Find/Live (consistent with them), just disabled when there's nothing to do rather
+  // than popping in/out of the layout.
   const unanalyzed = data.games.filter(g => !g.cached).length;
   const allBtn = $('#analyzeAllBtn');
-  if (unanalyzed > 0) { allBtn.style.display = ''; allBtn.disabled = false; allBtn.textContent = `Analyze (${unanalyzed})`; }
-  else { allBtn.style.display = 'none'; }
+  allBtn.disabled = unanalyzed === 0;
+  allBtn.textContent = unanalyzed > 0 ? `Analyze (${unanalyzed})` : 'Analyze';
   // The rows speak for themselves (✓ badges already mark analyzed games) — no instructional
   // sentence needed once there's a list to look at; only the empty-results case still needs a
   // status message, since there's nothing on screen to explain otherwise.
@@ -993,8 +995,8 @@ $('#analyzeAllBtn').addEventListener('click', async () => {
     succeeded++;
   }
   const remaining = targets.length - succeeded;
-  if (remaining > 0) { allBtn.disabled = false; allBtn.textContent = `Analyze (${remaining})`; }
-  else allBtn.style.display = 'none';
+  allBtn.disabled = remaining === 0;
+  allBtn.textContent = remaining > 0 ? `Analyze (${remaining})` : 'Analyze';
 });
 
 async function checkLive(riotId, region, attempt = 0) {
