@@ -8,18 +8,14 @@
 
 Enter a Riot ID, pick a game (or your **current live game**), and get a fairness verdict — **FAIR / NOT FAIR / FAVORED** — with a one-line reason and a lane-by-lane matchup table for all 10 players, computed from **pre-game data only** (what everyone looked like *before* the match started, not after).
 
-> Free & open source (MIT). Fork it, self-host it in ~10 minutes on free tiers.
+> Free & open source (MIT). Fork it, [self-host it in ~10 minutes](docs/SELF_HOST.md) on free tiers.
 
 See [ROADMAP.md](ROADMAP.md) for what's planned next.
-
-## Promote the project
-
-Create a caption and share your own analyzed game from the Share sheet. See [docs/PROMOTION.md](docs/PROMOTION.md) for the cached manifest, local package generator, and publishing safeguards.
 
 <p align="center">
   <a href="docs/media/short-fr.mp4"><img src="docs/media/short-preview.gif" width="270" alt="15-second animated Short: the question 'Cette ranked était-elle jouable ?', a zoom into the player's row of the matchup table, the 41% / 59% pregame odds bar, DEFEAT then FAVORED verdicts, and a losingqueue.lol call to action"></a>
 </p>
-<p align="center"><em>The animated Short generated from a real game — <a href="docs/media/short-fr.mp4">French MP4</a> · <a href="docs/media/short-en.mp4">English MP4</a> · <a href="scripts/promotion/animated/README.md">make your own</a> (one screenshot + one JSON file).</em></p>
+<p align="center"><em><a href="docs/media/short-fr.mp4">French</a> · <a href="docs/media/short-en.mp4">English</a></em></p>
 
 ![A matchup card showing a NOT FAIR-verdict game: five lane rows with champion icons, GA scores and chips (autofill, OTP, smurf, duo, countered), a Favored column, and a team-footer win-probability bar](public/screenshot.png)
 *A real analyzed game — matchmaking-side verdict (lane GA + duo synergy) split from the draft-side read (counter picks), win probability bar, and per-player chips for autofill/OTP/smurf/duo/streaks.*
@@ -63,34 +59,6 @@ Turso (free tier, SQLite over HTTP)
 ```
 
 All data comes from the official [Riot Games API](https://developer.riotgames.com) — no scraping.
-
-## Self-host / fork
-
-1. **Fork this repo**, then import it on [vercel.com/new](https://vercel.com/new) — leave Root Directory empty; `vercel.json` pins the Vite build and function timeouts.
-2. Create a free SQLite database at [turso.tech](https://turso.tech) and copy its URL + auth token.
-3. Get a Riot API key at [developer.riotgames.com](https://developer.riotgames.com) (dev keys are free, expire every 24h; a personal key is permanent).
-4. Optional accounts: create a free [Clerk](https://clerk.com) app and note its publishable key + frontend API URL.
-5. In Vercel → Project → Settings → Environment Variables:
-
-   | Variable | Value |
-   |---|---|
-   | `RIOT_API_KEY` | shared key for keyless visitors (optional — without it the app is BYOK-only) |
-   | `TURSO_DATABASE_URL` | `libsql://your-db.turso.io` |
-   | `TURSO_AUTH_TOKEN` | Turso token |
-   | `VITE_CLERK_PUBLISHABLE_KEY` | optional — Clerk publishable key (`pk_...`) |
-   | `CLERK_ISSUER` | optional — e.g. `https://your-instance.clerk.accounts.dev` |
-
-6. Deploy. Done.
-
-### Local development
-
-```bash
-npm install
-# terminal 1 — API shim on :3131 (hosts the same serverless functions locally)
-RIOT_API_KEY=RGAPI-xxx TURSO_DATABASE_URL=libsql://... TURSO_AUTH_TOKEN=... CLERK_ISSUER=... npm run dev:api
-# terminal 2 — Vite on :5173 (proxies /api to :3131)
-VITE_CLERK_PUBLISHABLE_KEY=pk_... npx vite
-```
 
 ## Notes & limits
 
