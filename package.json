@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "node --test tests/promotion.test.mjs",
     "promo:generate": "node scripts/promotion/generate.mjs",
+    "promo:short": "node scripts/promotion/animated/make-video.mjs",
     "promo:validate": "node scripts/promotion/validate-content.mjs",
     "promo:publish:youtube": "node scripts/promotion/publish-youtube.mjs",
     "promo:publish:x": "node scripts/promotion/publish-x.mjs",

@@ -6,3 +6,6 @@ backend/data/matches/
 .env
 *.key
 .DS_Store
+scripts/promotion/animated/frames-*/
+scripts/promotion/animated/grid.png
+scripts/promotion/animated/preview-*.png

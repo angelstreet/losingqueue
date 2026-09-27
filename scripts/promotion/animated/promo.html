@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Promo render</title>
+<style>html,body{margin:0;background:#0b0d12}canvas{display:block}</style>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+const W = 1080, H = 1920;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const eo = t => 1 - Math.pow(1 - t, 3);
+const eio = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const eb = t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+const prog = (t, t0, d, fn = eo) => fn(clamp((t - t0) / d, 0, 1));
+const fadeOut = (t, t0, d) => 1 - prog(t, t0, d);
+const F = (w, px) => `${w} ${px}px "Bahnschrift", "Arial Black", Arial, sans-serif`;
+const GOLD = '#e0a63d', BLUE = '#4a90d9', ORANGE = '#e8873f', RED = '#e05d5d', GREEN = '#3fb68b', TXT = '#eef0f5', MUTED = '#8a91a3';
+
+const COPY = {
+  fr: {
+    hook: ['Cette ranked', 'était-elle jouable ?'], hookSmall: 'Cette ranked était-elle jouable ?',
+    badge: 'NON OFFICIEL', context: 'Warwick · Jungle · EUW',
+    gameLabel: 'LA GAME · VUE PAR LOSINGQUEUE', callout: 'Toi : GA 76 · ACE · #2 du lobby',
+    preTitle: 'AVANT LA GAME', blue: 'BLUE', red: 'RED · TOI',
+    favLine1: 'Ton équipe était', favLine2: 'FAVORITE À 59 %',
+    chips: ['Team GA 66 vs 57', 'Jungle Δ +37', 'Duo pour toi'],
+    resultLabel: 'RÉSULTAT', verdictLabel: 'VERDICT LOSINGQUEUE',
+    reason: ['Jungle +37 et duo en ta faveur…', 'et pourtant, défaite.'],
+    cta1: 'Teste ta propre game', ctaBtn: 'ANALYSER MA GAME  →',
+    small: 'Gratuit · Non officiel · Non approuvé par Riot Games',
+  },
+  en: {
+    hook: ['Was this ranked', 'game winnable?'], hookSmall: 'Was this ranked game winnable?',
+    badge: 'UNOFFICIAL', context: 'Warwick · Jungle · EUW',
+    gameLabel: 'THE GAME · AS SEEN BY LOSINGQUEUE', callout: 'You: GA 76 · ACE · #2 in lobby',
+    preTitle: 'BEFORE THE GAME', blue: 'BLUE', red: 'RED · YOU',
+    favLine1: 'Your team was', favLine2: 'FAVORED AT 59%',
+    chips: ['Team GA 66 vs 57', 'Jungle Δ +37', 'Duo on your side'],
+    resultLabel: 'RESULT', verdictLabel: 'LOSINGQUEUE VERDICT',
+    reason: ['Jungle +37 and a duo on your side…', 'and still a loss.'],
+    cta1: 'Check your own game', ctaBtn: 'ANALYZE MY GAME  →',
+    small: 'Free · Unofficial · Not endorsed by Riot Games',
+  },
+};
+const DATA = {
+  result: 'DEFEAT', kills: [28, 44], verdict: 'FAVORED', prob: { blue: 41, red: 59 },
+  rowRect: { x: 607, y: 197, w: 508, h: 68 }, rowFocus: { x: 861, y: 231 },
+};
+
+// timeline (seconds)
+const T = { hook: 0, card: 2.4, zoom: 2.7, hl: 3.9, callout: 4.5, stats: 6.0, fav: 7.3, chips: 7.7, verdict: 8.6, favored: 9.4, reason: 10.2, cta: 11.6, end: 15 };
+
+let matchImg = null, logoImg = null;
+const PARTICLES = Array.from({ length: 70 }, (_, i) => {
+  const r = n => { const x = Math.sin(i * 12.9898 + n * 78.233) * 43758.5453; return x - Math.floor(x); };
+  return { x: r(1) * W, y: r(2) * H, s: 1.5 + r(3) * 3, a: .08 + r(4) * .25, v: 18 + r(5) * 40, ph: r(6) * 6.28 };
+});
+
+window.setConfig = cfg => {
+  if (cfg.data) Object.assign(DATA, cfg.data);
+  if (cfg.copy) for (const [loc, v] of Object.entries(cfg.copy)) Object.assign(COPY[loc] ||= { ...COPY.en }, v);
+  if (cfg.timeline) Object.assign(T, cfg.timeline);
+  return { DATA, T };
+};
+window.loadAssets = async () => {
+  const load = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+  [matchImg, logoImg] = await Promise.all([load('/match.png'), load('/league-of-legends-logo.svg')]);
+  await document.fonts.load('bold 100px Bahnschrift').catch(() => {});
+  return [matchImg.width, matchImg.height];
+};
+
+function rr(c, x, y, w, h, r) {
+  c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
+function glow(c, color, blur) { c.shadowColor = color; c.shadowBlur = blur; }
+function noGlow(c) { c.shadowBlur = 0; c.shadowColor = 'transparent'; }
+function text(c, s, x, y, { font, color = TXT, align = 'left', alpha = 1, blur = 0, glowColor } = {}) {
+  c.save(); c.globalAlpha *= alpha; c.font = font; c.fillStyle = color; c.textAlign = align; c.textBaseline = 'alphabetic';
+  if (blur) glow(c, glowColor || color, blur);
+  c.fillText(s, x, y); c.restore();
+}
+function pill(c, label, cx, cy, { font = F('bold', 30), fg = GOLD, bg = 'rgba(224,166,61,.12)', stroke = GOLD, padX = 26, h = 56, alpha = 1, scale = 1 } = {}) {
+  c.save(); c.globalAlpha *= alpha; c.font = font; const w = c.measureText(label).width + padX * 2;
+  c.translate(cx, cy); c.scale(scale, scale);
+  rr(c, -w / 2, -h / 2, w, h, h / 2); c.fillStyle = bg; c.fill(); c.strokeStyle = stroke; c.lineWidth = 2.5; c.stroke();
+  c.fillStyle = fg; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(label, 0, 2); c.restore();
+  return w;
+}
+
+function background(c, t) {
+  const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0b0d12'); g.addColorStop(1, '#131823');
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const glowAt = (x, y, r, color, a) => { const rg = c.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, color); rg.addColorStop(1, 'rgba(0,0,0,0)'); c.globalAlpha = a; c.fillStyle = rg; c.fillRect(0, 0, W, H); c.globalAlpha = 1; };
+  glowAt(180 + 90 * Math.sin(t * .4), 320 + 70 * Math.cos(t * .3), 760, 'rgba(224,166,61,1)', .13);
+  glowAt(920 + 70 * Math.sin(t * .5 + 1), 1520 + 90 * Math.sin(t * .35), 860, 'rgba(232,135,63,1)', .10);
+  glowAt(540, 1000, 900, 'rgba(74,144,217,1)', .05);
+  // faint diagonal lines drifting
+  c.save(); c.globalAlpha = .045; c.strokeStyle = '#ffffff'; c.lineWidth = 1;
+  const off = (t * 25) % 120;
+  for (let x = -H; x < W + H; x += 120) { c.beginPath(); c.moveTo(x + off, 0); c.lineTo(x + off - H, H); c.stroke(); }
+  c.restore();
+  for (const p of PARTICLES) {
+    const y = ((p.y - t * p.v) % H + H) % H; const x = p.x + Math.sin(t * .6 + p.ph) * 14;
+    c.globalAlpha = p.a * (.7 + .3 * Math.sin(t * 2 + p.ph)); c.fillStyle = '#ffd98a';
+    c.beginPath(); c.arc(x, y, p.s, 0, 6.283); c.fill();
+  }
+  c.globalAlpha = 1;
+  const v = c.createRadialGradient(W / 2, H / 2, 500, W / 2, H / 2, 1300); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.6)');
+  c.fillStyle = v; c.fillRect(0, 0, W, H);
+}
+
+function header(c, t, L) {
+  const p = prog(t, 0, .7); const y = lerp(-140, 0, p);
+  c.save(); c.globalAlpha = p; c.translate(0, y);
+  if (logoImg) c.drawImage(logoImg, 76, 66, 200, 76);
+  text(c, 'LOSING QUEUE', 302, 122, { font: F('bold', 54), color: GOLD });
+  c.font = F('bold', 54); const ww = c.measureText('LOSING QUEUE').width;
+  c.font = F('bold', 22); const bw = c.measureText(L.badge).width + 32;
+  pill(c, L.badge, 302 + ww + 24 + bw / 2, 106, { font: F('bold', 22), h: 38, padX: 16, fg: MUTED, stroke: '#3a4150', bg: 'rgba(255,255,255,.04)' });
+  c.restore();
+  // separator
+  c.save(); c.globalAlpha = .5 * p; c.fillStyle = '#2a3242'; c.fillRect(76, 170, 928, 2); c.restore();
+}
+
+function sceneHook(c, t, L) {
+  const out = fadeOut(t, T.card - .35, .35);
+  if (out <= 0) return;
+  c.save(); c.globalAlpha = out; c.translate(0, -60 * (1 - out));
+  const p1 = prog(t, .15, .6), p2 = prog(t, .38, .6), p3 = prog(t, .95, .6);
+  text(c, L.hook[0], 76, 760 + 50 * (1 - p1), { font: F('bold', 120), alpha: p1 });
+  text(c, L.hook[1], 76, 900 + 50 * (1 - p2), { font: F('bold', 120), color: GOLD, alpha: p2, blur: 30 * p2 });
+  const lw = prog(t, .7, .7) * 928; c.fillStyle = GOLD; c.globalAlpha = out * .9; c.fillRect(76, 960, lw, 6);
+  text(c, L.context, 76, 1050, { font: F('normal', 44), color: MUTED, alpha: p3 });
+  c.restore();
+}
+
+function subtitle(c, t, L) {
+  const p = prog(t, T.card, .5);
+  if (p <= 0) return;
+  text(c, L.hookSmall, 76, 250, { font: F('bold', 46), alpha: p });
+  text(c, L.context, 76, 305, { font: F('normal', 32), color: MUTED, alpha: p });
+}
+
+const CARD = { x: 60, y: 640, w: 960, h: 660 };
+function cardFrame(c, alpha, scale) {
+  c.save(); c.globalAlpha = alpha; c.translate(CARD.x + CARD.w / 2, CARD.y + CARD.h / 2); c.scale(scale, scale); c.translate(-(CARD.x + CARD.w / 2), -(CARD.y + CARD.h / 2));
+  glow(c, 'rgba(0,0,0,.6)', 40); rr(c, CARD.x, CARD.y, CARD.w, CARD.h, 28); c.fillStyle = '#151a24'; c.fill(); noGlow(c);
+  c.strokeStyle = '#2b3342'; c.lineWidth = 2; c.stroke(); c.restore();
+}
+
+function sceneScreenshot(c, t, L) {
+  const inP = prog(t, T.card, .6, eb), out = fadeOut(t, T.stats - .35, .35);
+  const a = Math.min(inP, 1) * out; if (a <= 0 || !matchImg) return;
+  const scale = lerp(.94, 1, clamp(inP, 0, 1));
+  cardFrame(c, a, scale);
+  c.save(); c.globalAlpha = a; c.translate(CARD.x + CARD.w / 2, CARD.y + CARD.h / 2); c.scale(scale, scale); c.translate(-(CARD.x + CARD.w / 2), -(CARD.y + CARD.h / 2));
+  text(c, L.gameLabel, CARD.x + 30, CARD.y + 44, { font: F('bold', 24), color: MUTED });
+  const fx = CARD.x + 20, fy = CARD.y + 66, fw = CARD.w - 40, fh = CARD.h - 86;
+  const iw = matchImg.width, ih = matchImg.height;
+  const cover = Math.max(fw / iw, fh / ih);
+  const k = prog(t, T.zoom, 1.9, eio);
+  const s = lerp(cover, 1.85, k);
+  const cx = lerp(iw / 2, DATA.rowFocus.x, k), cy = lerp(ih / 2, DATA.rowFocus.y, k);
+  let dx = fx + fw / 2 - cx * s, dy = fy + fh / 2 - cy * s;
+  dx = clamp(dx, fx + fw - iw * s, fx); dy = clamp(dy, fy + fh - ih * s, fy);
+  c.save(); rr(c, fx, fy, fw, fh, 16); c.clip();
+  c.imageSmoothingQuality = 'high'; c.drawImage(matchImg, dx, dy, iw * s, ih * s);
+  // dim everything but the row once highlighted
+  const hp = prog(t, T.hl, .5);
+  if (hp > 0) {
+    const r = DATA.rowRect; const rx = dx + r.x * s, ry = dy + r.y * s, rw = r.w * s, rh = r.h * s;
+    c.save(); c.globalAlpha = .45 * hp; c.fillStyle = '#000'; c.beginPath(); c.rect(fx, fy, fw, fh); rr(c, rx - 8, ry - 8, rw + 16, rh + 16, 12); c.fill('evenodd'); c.restore();
+    const pulse = .75 + .25 * Math.sin((t - T.hl) * 5);
+    c.save(); c.globalAlpha = hp * pulse; glow(c, ORANGE, 34); c.strokeStyle = ORANGE; c.lineWidth = 5; rr(c, rx - 8, ry - 8, rw + 16, rh + 16, 12); c.stroke(); c.restore();
+  }
+  c.restore(); c.restore();
+  const cp = prog(t, T.callout, .55, eb);
+  if (cp > 0 && out > 0) pill(c, L.callout, W / 2 + 200 * (1 - clamp(cp, 0, 1)), CARD.y + CARD.h + 74, { font: F('bold', 38), h: 74, padX: 34, alpha: clamp(cp, 0, 1) * out, bg: 'rgba(224,166,61,.14)' });
+}
+
+function sceneStats(c, t, L) {
+  const inP = prog(t, T.stats, .5), out = fadeOut(t, T.verdict - .3, .3);
+  const a = inP * out; if (a <= 0) return;
+  cardFrame(c, a, 1);
+  c.save(); c.globalAlpha = a;
+  const x0 = CARD.x + 44, x1 = CARD.x + CARD.w - 44, y0 = CARD.y;
+  text(c, L.preTitle, x0, y0 + 60, { font: F('bold', 26), color: MUTED });
+  const k = prog(t, T.stats + .3, 1.1);
+  const pb = Math.round(DATA.prob.blue * k), pr = Math.round(DATA.prob.red * k);
+  text(c, `${pb}%`, x0, y0 + 210, { font: F('bold', 150), color: BLUE, blur: 18 });
+  text(c, `${pr}%`, x1, y0 + 210, { font: F('bold', 150), color: ORANGE, align: 'right', blur: 18 });
+  text(c, L.blue, x0, y0 + 262, { font: F('bold', 32), color: BLUE });
+  text(c, L.red, x1, y0 + 262, { font: F('bold', 32), color: ORANGE, align: 'right' });
+  const by = y0 + 296, bh = 58, bw = x1 - x0; const split = lerp(.5, DATA.prob.blue / 100, k);
+  c.save(); rr(c, x0, by, bw, bh, bh / 2); c.clip();
+  c.fillStyle = BLUE; c.fillRect(x0, by, bw * split, bh); c.fillStyle = ORANGE; c.fillRect(x0 + bw * split, by, bw * (1 - split), bh);
+  c.fillStyle = 'rgba(255,255,255,.9)'; c.fillRect(x0 + bw * split - 2, by, 4, bh); c.restore();
+  const fp = prog(t, T.fav, .55, eb);
+  if (fp > 0) {
+    text(c, L.favLine1, W / 2, y0 + 430, { font: F('normal', 46), color: TXT, align: 'center', alpha: clamp(fp, 0, 1) });
+    c.save(); c.translate(W / 2, y0 + 505); c.scale(fp, fp);
+    text(c, L.favLine2, 0, 0, { font: F('bold', 70), color: GOLD, align: 'center', blur: 26 }); c.restore();
+  }
+  L.chips.forEach((ch, i) => {
+    const p = prog(t, T.chips + i * .2, .45, eb); if (p <= 0) return;
+    const xs = [W / 2 - 310, W / 2, W / 2 + 310];
+    pill(c, ch, xs[i], y0 + 605, { font: F('bold', 30), h: 58, padX: 20, scale: p, alpha: clamp(p, 0, 1), fg: TXT, stroke: '#3a4150', bg: 'rgba(255,255,255,.05)' });
+  });
+  c.restore();
+}
+
+function slam(c, t, t0, s, x, y, font, color) {
+  const p = prog(t, t0, .55, eb); if (p <= 0) return 0;
+  const shake = t - t0 < .45 ? Math.sin((t - t0) * 90) * 14 * (1 - (t - t0) / .45) : 0;
+  c.save(); c.translate(x + shake, y); const sc = lerp(2.2, 1, clamp(p, 0, 1)); c.scale(sc, sc);
+  text(c, s, 0, 0, { font, color, align: 'center', alpha: clamp(p * 1.4, 0, 1), blur: 40 });
+  c.restore();
+  return p;
+}
+function flash(c, t, t0, strength = .55) { const d = t - t0; if (d < 0 || d > .5) return; c.save(); c.globalAlpha = strength * Math.exp(-d * 9); c.fillStyle = '#fff'; c.fillRect(0, 0, W, H); c.restore(); }
+
+function sceneVerdict(c, t, L) {
+  const out = fadeOut(t, T.cta - .3, .3); if (out <= 0 || t < T.verdict) return;
+  c.save(); c.globalAlpha = out;
+  text(c, L.resultLabel, W / 2, 680, { font: F('bold', 30), color: MUTED, align: 'center', alpha: prog(t, T.verdict, .3) });
+  slam(c, t, T.verdict, DATA.result, W / 2, 870, F('bold', 190), DATA.result === 'VICTORY' ? GREEN : RED);
+  const kp = prog(t, T.verdict + .45, .4);
+  text(c, `${DATA.kills[0]} – ${DATA.kills[1]}`, W / 2, 960 + 20 * (1 - kp), { font: F('bold', 66), color: TXT, align: 'center', alpha: kp });
+  text(c, L.verdictLabel, W / 2, 1090, { font: F('bold', 30), color: MUTED, align: 'center', alpha: prog(t, T.favored - .15, .3) });
+  slam(c, t, T.favored, DATA.verdict, W / 2, 1270, F('bold', 190), DATA.verdict === 'FAIR' ? GREEN : DATA.verdict === 'FAVORED' ? GOLD : RED);
+  const rp = prog(t, T.reason, .6);
+  if (rp > 0) {
+    text(c, L.reason[0], W / 2, 1395 + 30 * (1 - rp), { font: F('normal', 46), align: 'center', alpha: rp });
+    text(c, L.reason[1], W / 2, 1460 + 30 * (1 - rp), { font: F('bold', 52), color: DATA.result === 'VICTORY' ? GREEN : RED, align: 'center', alpha: prog(t, T.reason + .3, .5) });
+  }
+  c.restore();
+  flash(c, t, T.verdict, .5); flash(c, t, T.favored, .6);
+}
+
+function sceneCta(c, t, L) {
+  if (t < T.cta) return;
+  const p1 = prog(t, T.cta + .1, .6), p2 = prog(t, T.cta + .3, .7, eb), p3 = prog(t, T.cta + .65, .6, eb), p4 = prog(t, T.cta + .95, .6);
+  text(c, L.cta1, W / 2, 860 + 40 * (1 - p1), { font: F('bold', 84), align: 'center', alpha: p1 });
+  const pulse = 1 + .015 * Math.sin((t - T.cta) * 4);
+  c.save(); c.translate(W / 2, 1015); c.scale(clamp(p2, 0, 1.2) * pulse, clamp(p2, 0, 1.2) * pulse);
+  text(c, 'losingqueue.lol', 0, 0, { font: F('bold', 112), color: GOLD, align: 'center', blur: 46 }); c.restore();
+  if (p3 > 0) {
+    const bw = 700, bh = 116, by = 1105; c.save(); c.translate(W / 2, by + bh / 2); c.scale(p3, p3); c.globalAlpha = clamp(p3, 0, 1);
+    glow(c, 'rgba(224,166,61,.7)', 50 * (1 + .3 * Math.sin((t - T.cta) * 3))); rr(c, -bw / 2, -bh / 2, bw, bh, bh / 2); c.fillStyle = GOLD; c.fill(); noGlow(c);
+    text(c, L.ctaBtn, 0, 14, { font: F('bold', 42), color: '#14110a', align: 'center' }); c.restore();
+  }
+  text(c, L.small, W / 2, 1320, { font: F('normal', 30), color: MUTED, align: 'center', alpha: p4 });
+  // recap strip
+  const rp = prog(t, T.cta + 1.2, .6);
+  if (rp > 0) {
+    const rc = DATA.result === 'VICTORY' ? GREEN : RED;
+    pill(c, `${DATA.result} · ${DATA.kills[0]}–${DATA.kills[1]}`, W / 2 - 230, 1435, { font: F('bold', 30), h: 58, fg: rc, stroke: rc, bg: 'rgba(255,255,255,.05)', alpha: rp });
+    pill(c, `${DATA.verdict} · ${DATA.prob.red}%`, W / 2 + 200, 1435, { font: F('bold', 30), h: 58, alpha: rp });
+  }
+}
+
+function footer(c, t) {
+  const p = prog(t, .8, .6); if (p <= 0) return;
+  c.save(); c.globalAlpha = .35 * p; c.fillStyle = '#2a3242'; c.fillRect(76, 1500, 928, 2); c.restore();
+  text(c, 'losingqueue.lol', 76, 1552, { font: F('bold', 28), color: GOLD, alpha: .8 * p });
+  text(c, 'Riot Games API · heuristic analysis', W - 76, 1552, { font: F('normal', 26), color: MUTED, align: 'right', alpha: .8 * p });
+}
+
+// Debug: the screenshot at 1:1 with a 50px grid + the current rowRect, to pick coordinates for a new game.
+window.renderGrid = () => {
+  const cv = document.getElementById('c'); cv.width = matchImg.width; cv.height = matchImg.height;
+  const c = cv.getContext('2d'); c.drawImage(matchImg, 0, 0);
+  c.font = 'bold 11px Arial'; c.textBaseline = 'top';
+  for (let x = 0; x < cv.width; x += 50) { c.fillStyle = x % 100 ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.45)'; c.fillRect(x, 0, 1, cv.height); if (!(x % 100)) { c.fillStyle = '#ff0'; c.fillText(x, x + 2, 2); } }
+  for (let y = 0; y < cv.height; y += 50) { c.fillStyle = y % 100 ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.45)'; c.fillRect(0, y, cv.width, 1); if (!(y % 100)) { c.fillStyle = '#ff0'; c.fillText(y, 2, y + 2); } }
+  const r = DATA.rowRect; c.strokeStyle = '#ff5050'; c.lineWidth = 3; c.strokeRect(r.x, r.y, r.w, r.h);
+  c.fillStyle = '#ff5050'; c.beginPath(); c.arc(DATA.rowFocus.x, DATA.rowFocus.y, 6, 0, 6.283); c.fill();
+  return cv.toDataURL('image/png');
+};
+window.renderFrame = (t, locale = 'fr') => {
+  const cv = document.getElementById('c'); if (cv.width !== W) { cv.width = W; cv.height = H; }
+  const c = document.getElementById('c').getContext('2d');
+  const L = COPY[locale] || COPY.fr;
+  c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; noGlow(c);
+  background(c, t);
+  header(c, t, L);
+  sceneHook(c, t, L);
+  subtitle(c, t, L);
+  sceneScreenshot(c, t, L);
+  sceneStats(c, t, L);
+  sceneVerdict(c, t, L);
+  sceneCta(c, t, L);
+  footer(c, t);
+  // fade to black at the very end
+  const fo = prog(t, T.end - .4, .4); if (fo > 0) { c.globalAlpha = fo * .9; c.fillStyle = '#0b0d12'; c.fillRect(0, 0, W, H); c.globalAlpha = 1; }
+  return true;
+};
+</script>
+</html>

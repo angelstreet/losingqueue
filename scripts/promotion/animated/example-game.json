@@ -1,0 +1,32 @@
+{
+  "data": {
+    "result": "DEFEAT",
+    "kills": [28, 44],
+    "verdict": "FAVORED",
+    "prob": { "blue": 41, "red": 59 },
+    "rowRect": { "x": 607, "y": 197, "w": 508, "h": 68 },
+    "rowFocus": { "x": 861, "y": 231 }
+  },
+  "copy": {
+    "fr": {
+      "context": "Warwick · Jungle · EUW",
+      "callout": "Toi : GA 76 · ACE · #2 du lobby",
+      "red": "RED · TOI",
+      "blue": "BLUE",
+      "favLine1": "Ton équipe était",
+      "favLine2": "FAVORITE À 59 %",
+      "chips": ["Team GA 66 vs 57", "Jungle Δ +37", "Duo pour toi"],
+      "reason": ["Jungle +37 et duo en ta faveur…", "et pourtant, défaite."]
+    },
+    "en": {
+      "context": "Warwick · Jungle · EUW",
+      "callout": "You: GA 76 · ACE · #2 in lobby",
+      "red": "RED · YOU",
+      "blue": "BLUE",
+      "favLine1": "Your team was",
+      "favLine2": "FAVORED AT 59%",
+      "chips": ["Team GA 66 vs 57", "Jungle Δ +37", "Duo on your side"],
+      "reason": ["Jungle +37 and a duo on your side…", "and still a loss."]
+    }
+  }
+}

@@ -32,6 +32,10 @@ node scripts/promotion/publish-x.mjs --input promotion-output --dry-run
 
 Dry run is the default. Live publishing requires `--publish`, platform credentials, and Turso credentials. A publication row is reserved before a live API call, successful uploads record the returned ID, and failed calls release their reservation. If a platform accepts a post but the database write fails, the pending row stays in place to prevent an accidental duplicate. One successful post per platform per 24 hours is allowed.
 
+## Animated Short (recommended for posting)
+
+`scripts/promotion/animated/` renders a fully animated 15-second Short (Ken Burns zoom on the match screenshot, animated odds bar, verdict slam, CTA, synthesized soundtrack) from one screenshot plus a JSON file of numbers and copy. Run `npm run promo:short -- --locale fr --data game.json --image game.png`; see [scripts/promotion/animated/README.md](../scripts/promotion/animated/README.md) for the step-by-step recipe, the `--grid` and `--preview` helpers, and how to redo it for another game.
+
 ## GitHub Actions
 
 **Generate promotion package** runs manually or once daily when `PROMOTION_AUTOMATION_TOKEN` is configured. It generates exactly one package, validates it, and uploads an artifact. It never publishes. The YouTube and X workflows are manual only and default to dry run. They upload a package artifact even in dry run. All workflows use minimal `contents: read` permissions and full commit SHAs for actions. Publishing secrets are unavailable to pull-request workflows because none of these workflows run on pull requests.
