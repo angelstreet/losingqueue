@@ -4,7 +4,7 @@ Losing Queue turns an analyzed game into shareable content. The verdict is a heu
 
 ## Share from the site
 
-Analyze a ranked game, then choose **Create content** beside Share. Select French or English and a tone. The sheet shows an image preview, an X caption, a YouTube title and description, and actions to copy, share, or download. **Download Short** saves a 15-second WebM where `MediaRecorder` supports it; otherwise it downloads a 1080×1920 PNG. The exported image hides player Riot IDs by default. **Show my Riot ID in image** reveals only your own ID. Public deep links preserve `riot-search` and `match` and include UTM tags; UTM values are ignored when loading the match.
+Analyze a ranked game, then choose **Create content** beside Share. Select French or English and a tone. The sheet shows an image preview, an X caption, a YouTube title and description, and actions to copy, share, or download. **Download Short** saves a 15-second WebM where `MediaRecorder` supports it; otherwise it downloads a 1080×1920 PNG. The Short includes the League of Legends logo and the share image of the actual match, first as an overview and then zoomed toward the player's team. The exported share image hides player Riot IDs by default. **Show my Riot ID in image** reveals only your own ID. Public deep links preserve `riot-search` and `match` and include UTM tags; UTM values are ignored when loading the match.
 
 Only aggregate event counts are stored by day, event, source, and campaign. No full IP address, clipboard content, or Riot API key is stored for promotion analytics. The conversion event is a new completed analysis after a visitor opened a tracked match link.
 
@@ -17,6 +17,8 @@ node scripts/promotion/generate.mjs --url "https://www.losingqueue.lol/?riot-sea
 ```
 
 The package contains `manifest.json`, `caption-x.txt`, `youtube-title.txt`, `youtube-description.txt`, `card-x.png` (1200×630), `card-square.png` (1080×1080), `short.mp4` (1080×1920, about 15 seconds), and `validation.json`. The renderer uses the same normalized analysis fields as the browser and never calculates another fairness score. Use `--formats x,square,short` to choose outputs, or `--no-render` for text only. Output stays ignored by Git by default.
+
+The CLI Short shows a match summary and the League logo. To include a real matchup screenshot in the video, pass `--match-image "C:\\path\\to\\redacted-match.png"`. Review the screenshot for player names and private information before using it in a public post. The image is read locally and is not copied into the repository or promotion package.
 
 For owner candidate selection, set `PROMOTION_AUTOMATION_TOKEN` and use `--auto`. The token only reaches the protected feed endpoint. The feed uses a bounded database query and skips already published and low-scoring matches. A 30-second server-side throttle limits feed requests. Set `--api-base` only for a trusted local or staging API.
 

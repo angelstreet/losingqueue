@@ -6,12 +6,16 @@ import { spawn } from 'node:child_process';
 
 const ROOT = new URL('../../', import.meta.url);
 
-export async function renderAssets(manifest, out, formats = ['x', 'square', 'short']) {
+export async function renderAssets(manifest, out, formats = ['x', 'square', 'short'], matchImagePath = null) {
   const html = await readFile(new URL('./render.html', import.meta.url));
   const module = await readFile(new URL('../../src/promotion/vertical-card.js', import.meta.url));
+  const leagueLogo = await readFile(new URL('../../public/league-of-legends-logo.svg', import.meta.url));
+  const matchSnapshot = matchImagePath ? await readFile(matchImagePath) : null;
   const server = createServer((req, res) => {
     if (req.url === '/') { res.setHeader('content-type', 'text/html'); res.end(html); }
     else if (req.url === '/vertical-card.js') { res.setHeader('content-type', 'text/javascript'); res.end(module); }
+    else if (req.url === '/league-of-legends-logo.svg') { res.setHeader('content-type', 'image/svg+xml'); res.end(leagueLogo); }
+    else if (req.url === '/match-snapshot.png' && matchSnapshot) { res.setHeader('content-type', 'image/png'); res.end(matchSnapshot); }
     else { res.statusCode = 404; res.end(); }
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -23,6 +27,7 @@ export async function renderAssets(manifest, out, formats = ['x', 'square', 'sho
     const page = await browser.newPage({ viewport: { width: 1200, height: 1920 }, deviceScaleFactor: 1 });
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     await page.waitForFunction(() => typeof window.drawPromotion === 'function');
+    if (formats.includes('short')) await page.evaluate(hasMatchImage => window.loadPromotionAssets(hasMatchImage), Boolean(matchSnapshot));
     const capture = async (kind, file, phase = 4) => {
       await page.evaluate(({ manifest, kind, phase }) => window.drawPromotion(manifest, kind, phase), { manifest, kind, phase });
       await page.locator('canvas').screenshot({ path: file });

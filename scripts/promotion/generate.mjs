@@ -74,7 +74,7 @@ export async function generate(opts) {
     writeFile(join(out, 'youtube-description.txt'), captions.youtubeDescription),
     writeFile(join(out, 'validation.json'), JSON.stringify(validation, null, 2)),
   ]);
-  if (!opts['no-render']) await renderAssets(manifest, out, opts.formats);
+  if (!opts['no-render']) await renderAssets(manifest, out, opts.formats, opts['match-image'] ? resolve(opts['match-image']) : null);
   return out;
 }
 

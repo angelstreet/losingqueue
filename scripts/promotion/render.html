@@ -4,9 +4,16 @@
 <canvas id="card"></canvas>
 <script type="module">
   import { drawVerticalCard, drawStaticCard } from '/vertical-card.js';
+  const loadImage = async src => { const image = new Image(); image.src = src; await image.decode(); return image; };
+  let matchImage = null, leagueLogo = null;
+  window.loadPromotionAssets = async (hasMatchImage) => {
+    [matchImage, leagueLogo] = await Promise.all([
+      hasMatchImage ? loadImage('/match-snapshot.png') : null, loadImage('/league-of-legends-logo.svg'),
+    ]);
+  };
   window.drawPromotion = (manifest, kind, phase = 4) => {
     const canvas = document.getElementById('card');
-    if (kind === 'vertical') drawVerticalCard(canvas, manifest, phase);
+    if (kind === 'vertical') drawVerticalCard(canvas, manifest, phase, false, matchImage, leagueLogo);
     else if (kind === 'x') drawStaticCard(canvas, manifest, 1200, 630);
     else if (kind === 'square') drawStaticCard(canvas, manifest, 1080, 1080);
     else throw new Error('Invalid format');

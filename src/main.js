@@ -2093,10 +2093,10 @@ function openShareModal(blob, riotId, matchId, openCreator = false) {
       setTimeout(() => URL.revokeObjectURL(url), 30_000);
     };
     try {
-      download(await shortWebm(creatorManifest, $('#creatorShowId').checked), 'webm');
+      download(await shortWebm(creatorManifest, $('#creatorShowId').checked, shareModalObjUrl), 'webm');
       promotionEvent('video_generated');
     } catch {
-      try { download(await verticalPng(creatorManifest, $('#creatorShowId').checked), 'png'); showToast('Video unavailable — vertical PNG downloaded.'); }
+      try { download(await verticalPng(creatorManifest, $('#creatorShowId').checked, shareModalObjUrl), 'png'); showToast('Video unavailable — vertical PNG downloaded.'); }
       catch { showToast('Could not export Short.'); }
     } finally { e.target.disabled = false; }
   });
