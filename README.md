@@ -1,21 +1,14 @@
 # Losing Queue
 
-*(formerly "LoL Matchmaking Fairness" — same project, same repo, new name)*
-
-**[losingqueue.lol](https://www.losingqueue.lol/)** — the live app.
-
 **Was your League of Legends game actually winnable — or were you dropped into a losing queue?**
 
 Enter a Riot ID, pick a game (or your **current live game**), and get a fairness verdict — **FAIR / NOT FAIR / FAVORED** — with a one-line reason and a lane-by-lane matchup table for all 10 players, computed from **pre-game data only** (what everyone looked like *before* the match started, not after).
 
 > Free & open source (MIT). Fork it, [self-host it in ~10 minutes](docs/SELF_HOST.md) on free tiers.
 
-See [ROADMAP.md](ROADMAP.md) for what's planned next.
-
 <p align="center">
   <a href="docs/media/short-fr.mp4"><img src="docs/media/short-preview.gif" width="270" alt="15-second animated Short: the question 'Cette ranked était-elle jouable ?', a zoom into the player's row of the matchup table, the 41% / 59% pregame odds bar, DEFEAT then FAVORED verdicts, and a losingqueue.lol call to action"></a>
 </p>
-<p align="center"><em><a href="docs/media/short-fr.mp4">French</a> · <a href="docs/media/short-en.mp4">English</a></em></p>
 
 ![A matchup card showing a NOT FAIR-verdict game: five lane rows with champion icons, GA scores and chips (autofill, OTP, smurf, duo, countered), a Favored column, and a team-footer win-probability bar](public/screenshot.png)
 *A real analyzed game — matchmaking-side verdict (lane GA + duo synergy) split from the draft-side read (counter picks), win probability bar, and per-player chips for autofill/OTP/smurf/duo/streaks.*
