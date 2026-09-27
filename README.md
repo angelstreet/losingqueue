@@ -4,7 +4,7 @@
 
 Enter a Riot ID, pick a game (or your **current live game**), and get a fairness verdict — **FAIR / NOT FAIR / FAVORED** — with a one-line reason and a lane-by-lane matchup table for all 10 players, computed from **pre-game data only** (what everyone looked like *before* the match started, not after).
 
-> Free & open source (MIT). Fork it, [self-host it in ~10 minutes](docs/SELF_HOST.md) on free tiers.
+> Free & open source (MIT).
 
 <p align="center">
   <a href="docs/media/short-fr.mp4"><img src="docs/media/short-preview.gif" width="270" alt="15-second animated Short: the question 'Cette ranked était-elle jouable ?', a zoom into the player's row of the matchup table, the 41% / 59% pregame odds bar, DEFEAT then FAVORED verdicts, and a losingqueue.lol call to action"></a>
