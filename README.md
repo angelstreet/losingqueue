@@ -16,6 +16,11 @@ See [ROADMAP.md](ROADMAP.md) for what's planned next.
 
 Create a caption and share your own analyzed game from the Share sheet. See [docs/PROMOTION.md](docs/PROMOTION.md) for the cached manifest, local package generator, and publishing safeguards.
 
+<p align="center">
+  <a href="docs/media/short-fr.mp4"><img src="docs/media/short-preview.gif" width="270" alt="15-second animated Short: the question 'Cette ranked était-elle jouable ?', a zoom into the player's row of the matchup table, the 41% / 59% pregame odds bar, DEFEAT then FAVORED verdicts, and a losingqueue.lol call to action"></a>
+</p>
+<p align="center"><em>The animated Short generated from a real game — <a href="docs/media/short-fr.mp4">French MP4</a> · <a href="docs/media/short-en.mp4">English MP4</a> · <a href="scripts/promotion/animated/README.md">make your own</a> (one screenshot + one JSON file).</em></p>
+
 ![A matchup card showing a NOT FAIR-verdict game: five lane rows with champion icons, GA scores and chips (autofill, OTP, smurf, duo, countered), a Favored column, and a team-footer win-probability bar](public/screenshot.png)
 *A real analyzed game — matchmaking-side verdict (lane GA + duo synergy) split from the draft-side read (counter picks), win probability bar, and per-player chips for autofill/OTP/smurf/duo/streaks.*
 
